@@ -45,29 +45,36 @@ export default function Navbar() {
 		setCurrentTheme(theme)
 	}
 
+	// Hide sidebar toggle buttons on landing page and login page
+	const hideSidebarButtons = pathname === '/' || pathname === '/auth/login'
+
 	return (
 		<div className="navbar bg-base-200/60 backdrop-blur supports-[backdrop-filter]:bg-base-200/50 relative z-40">
 			<div className="navbar-start gap-1">
-				<label htmlFor="app-drawer" className="btn btn-ghost btn-square lg:hidden" aria-label="open sidebar">
-					<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-				</label>
-				{/* Desktop toggle for collapsing/expanding the sidebar */}
-				<label
-					htmlFor="app-drawer"
-					className="btn btn-ghost btn-square hidden lg:inline-flex drawer-button"
-					aria-label="toggle sidebar"
-					title="Toggle sidebar"
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-						<path d="M3.75 5.25a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5H4.5a.75.75 0 01-.75-.75zM3.75 12a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5H4.5A.75.75 0 013.75 12zm0 6.75a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5H4.5a.75.75 0 01-.75-.75z" />
-					</svg>
-				</label>
+				{!hideSidebarButtons && (
+					<>
+						<label htmlFor="app-drawer" className="btn btn-ghost btn-square lg:hidden" aria-label="open sidebar">
+							<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+						</label>
+						{/* Desktop toggle for collapsing/expanding the sidebar */}
+						<label
+							htmlFor="app-drawer"
+							className="btn btn-ghost btn-square hidden lg:inline-flex drawer-button"
+							aria-label="toggle sidebar"
+							title="Toggle sidebar"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+								<path d="M3.75 5.25a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5H4.5a.75.75 0 01-.75-.75zM3.75 12a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5H4.5A.75.75 0 013.75 12zm0 6.75a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5H4.5a.75.75 0 01-.75-.75z" />
+							</svg>
+						</label>
+					</>
+				)}
 				<a className="btn btn-ghost text-xl" href="/">SDM & Hukum Kanwil Kemenag NTB</a>
 			</div>
 			<div className="navbar-center"></div>
 			<div className="navbar-end gap-2">
 				{isLoggedIn ? (
-					<div className="dropdown dropdown-end relative z-50">
+					<div className="dropdown dropdown-end relative z-50 hidden lg:flex">
 						<div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
 							<div className="w-10 rounded-full bg-primary text-primary-content flex items-center justify-center ring-2 ring-primary/20">
 								<span className="text-lg font-semibold">{username.charAt(0).toUpperCase()}</span>

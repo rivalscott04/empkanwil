@@ -149,30 +149,31 @@ export default function Map({ data, getMarkerColor, getMarkerRadius, selectedTyp
                 const locationSlug = encodeURIComponent(item.induk_unit)
                 const detailUrl = `/employees/location/${locationSlug}`
                 
-                return `<div style="min-width:220px; max-width:300px;${idx ? 'margin-top:12px;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px;' : ''}">
-                    <h3 style="font-weight:600; margin:0 0 8px 0; font-size:16px; line-height:1.4; word-wrap:break-word;">${item.location}</h3>
-                    <div style="margin:8px 0; padding:10px; background:rgba(0,0,0,0.1); border-radius:6px;">
-                        <p style="margin:0 0 8px 0; font-size:14px; font-weight:500;">
+                // Use CSS classes that will apply theme colors via CSS variables
+                return `<div class="heatmap-popup"${idx ? ' style="margin-top:0.75rem; padding-top:0.75rem;"' : ''}>
+                    ${idx ? '<div class="heatmap-popup-divider"></div>' : ''}
+                    <h3 class="heatmap-popup-title">${item.location}</h3>
+                    <div class="heatmap-popup-stats">
+                        <p class="heatmap-popup-total">
                             Total: <strong>${item.count.toLocaleString('id-ID')}</strong>
                         </p>
-                        <div style="display:flex; flex-wrap:wrap; gap:10px 12px; margin-top:6px;">
-                            <div style="display:flex; align-items:center; gap:6px; font-size:13px; min-width:0; flex:1 1 120px;">
-                                ${createIconSvg('check-circle', 16, '#22c55e')}
-                                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                    Aktif: <strong style="color:#22c55e;">${aktif.toLocaleString('id-ID')}</strong>
+                        <div class="heatmap-popup-stats-row">
+                            <div class="heatmap-popup-stat-item">
+                                <span class="heatmap-popup-icon-aktif">${createIconSvg('check-circle', 16, 'currentColor')}</span>
+                                <span class="heatmap-popup-stat-text">
+                                    Aktif: <strong class="heatmap-popup-aktif">${aktif.toLocaleString('id-ID')}</strong>
                                 </span>
                             </div>
-                            <div style="display:flex; align-items:center; gap:6px; font-size:13px; min-width:0; flex:1 1 120px;">
-                                ${createIconSvg('user-minus', 16, '#f97316')}
-                                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                    Pensiun: <strong style="color:#f97316;">${pensiun.toLocaleString('id-ID')}</strong>
+                            <div class="heatmap-popup-stat-item">
+                                <span class="heatmap-popup-icon-pensiun">${createIconSvg('user-minus', 16, 'currentColor')}</span>
+                                <span class="heatmap-popup-stat-text">
+                                    Pensiun: <strong class="heatmap-popup-pensiun">${pensiun.toLocaleString('id-ID')}</strong>
                                 </span>
                             </div>
                         </div>
                     </div>
-                    <p style="margin:6px 0 8px 0; font-size:11px; opacity:0.7; line-height:1.4; word-wrap:break-word; overflow-wrap:break-word;">${item.induk_unit}</p>
-                    <a href="${detailUrl}" 
-                       style="display:inline-block; margin-top:8px; padding:8px 12px; background:#3b82f6; color:white; text-decoration:none; border-radius:4px; font-size:13px; font-weight:500; text-align:center; width:100%; box-sizing:border-box; transition:background 0.2s;">
+                    <p class="heatmap-popup-induk">${item.induk_unit}</p>
+                    <a href="${detailUrl}" class="heatmap-popup-button">
                         Lihat Daftar Pegawai →
                     </a>
                 </div>`

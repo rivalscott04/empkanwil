@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userRole, setUserRole] = useState('')
 
@@ -15,6 +16,17 @@ export default function Sidebar() {
     setIsLoggedIn(!!token)
     setUserRole(role)
   }, [pathname])
+
+  function handleLogout() {
+    // Clear both localStorage and sessionStorage
+    localStorage.removeItem('token')
+    localStorage.removeItem('role')
+    localStorage.removeItem('username')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('role')
+    sessionStorage.removeItem('username')
+    router.push('/auth/login')
+  }
 
   const inEmployees = pathname.startsWith('/employees')
   const inAdmin = pathname === '/admin' || pathname.startsWith('/admin/')
@@ -27,7 +39,7 @@ export default function Sidebar() {
         <div className="px-4 pt-4 pb-2 is-drawer-close:hidden">
           <div className="text-xs uppercase tracking-wide opacity-60">Navigation</div>
         </div>
-        <ul className="menu w-full grow px-2 gap-1">
+        <ul className="menu w-full grow px-2 gap-1 flex flex-col">
           {isLoggedIn ? (
             <>
               <li className="menu-title"><span className="is-drawer-close:hidden">Master Data</span></li>
@@ -91,6 +103,20 @@ export default function Sidebar() {
                   </li>
                 </>
               )}
+
+              {/* Logout - visible on mobile, hidden on desktop since it's in navbar dropdown */}
+              <li className="mt-auto lg:hidden">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-error hover:bg-error/10 rounded-lg transition-colors is-drawer-close:tooltip is-drawer-close:tooltip-right"
+                  data-tip="Logout"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                  </svg>
+                  <span className="is-drawer-close:hidden">Logout</span>
+                </button>
+              </li>
             </>
           ) : (
             <>
