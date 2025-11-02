@@ -22,6 +22,11 @@ export default function EmployeesPage() {
 	const [statusFilter, setStatusFilter] = useState<string>('')
 	const [exporting, setExporting] = useState(false)
 	const [indukOptions, setIndukOptions] = useState<string[]>([])
+	const [indukSearch, setIndukSearch] = useState<string>('')
+	const [indukModalOpen, setIndukModalOpen] = useState(false)
+	const [statusModalOpen, setStatusModalOpen] = useState(false)
+	const indukModalRef = useRef<HTMLDialogElement | null>(null)
+	const statusModalRef = useRef<HTMLDialogElement | null>(null)
 	const [statistics, setStatistics] = useState<{ total: number; aktif: number; pensiun: number }>({ total: 0, aktif: 0, pensiun: 0 })
 	const [role, setRole] = useState<string>('')
 	const perPageRef = useRef(perPage)
@@ -185,6 +190,24 @@ export default function EmployeesPage() {
 			document.removeEventListener('keydown', handleKey)
 		}
 	}, [colsOpen])
+
+	// Handle modal open/close
+	useEffect(() => {
+		if (indukModalOpen && indukModalRef.current) {
+			indukModalRef.current.showModal()
+			setIndukSearch('')
+		} else if (indukModalRef.current) {
+			indukModalRef.current.close()
+		}
+	}, [indukModalOpen])
+
+	useEffect(() => {
+		if (statusModalOpen && statusModalRef.current) {
+			statusModalRef.current.showModal()
+		} else if (statusModalRef.current) {
+			statusModalRef.current.close()
+		}
+	}, [statusModalOpen])
 
 	function toggleCol(key: keyof typeof cols) {
 		setCols((prev) => {
@@ -414,17 +437,22 @@ export default function EmployeesPage() {
 							<li><label className="flex items-center gap-2"><input type="checkbox" className="checkbox checkbox-sm" checked={cols.actions} onChange={()=>toggleCol('actions')} /><span>Actions</span></label></li>
 						</ul>
 					</div>
-				<select className="select select-sm w-full sm:w-auto sm:max-w-xs md:w-80 truncate" value={indukFilter} onChange={(e)=>setIndukFilter(e.target.value)}>
-						<option value="">Semua Induk</option>
-					{(indukOptions || []).map(v => (
-						<option key={v} value={v}>{v}</option>
-					))}
-				</select>
-				<select className="select select-sm w-full sm:w-auto sm:max-w-xs" value={statusFilter} onChange={(e)=>setStatusFilter(e.target.value)}>
-					<option value="">Semua Status</option>
-					<option value="aktif">Aktif</option>
-					<option value="pensiun">Pensiun</option>
-				</select>
+				<button
+					type="button"
+					className="btn btn-sm w-full sm:w-auto sm:max-w-xs md:w-80 text-left justify-start"
+					onClick={() => setIndukModalOpen(true)}
+				>
+					<span className="truncate">{indukFilter || "Semua Induk"}</span>
+					<span className="ml-auto">▼</span>
+				</button>
+				<button
+					type="button"
+					className="btn btn-sm w-full sm:w-auto sm:max-w-xs"
+					onClick={() => setStatusModalOpen(true)}
+				>
+					<span>{statusFilter === 'aktif' ? 'Aktif' : statusFilter === 'pensiun' ? 'Pensiun' : 'Semua Status'}</span>
+					<span className="ml-auto">▼</span>
+				</button>
 					<button className="btn btn-sm whitespace-nowrap" onClick={resetFilters} title="Reset pencarian dan filter">Reset</button>
 					<div className="dropdown">
 						<div tabIndex={0} role="button" className="btn btn-sm btn-primary whitespace-nowrap" aria-haspopup="menu">
@@ -685,6 +713,121 @@ export default function EmployeesPage() {
 					<button className="btn join-item" disabled={page>=pages} onClick={()=>{ const p = page+1; setPage(p); load(p, search, perPage) }}>{'»'}</button>
 				</div>
 			</div>
+
+			{/* Modal Filter Induk */}
+			<dialog ref={indukModalRef} className="modal">
+				<div className="modal-box">
+					<h3 className="font-bold text-lg mb-4">Pilih Induk</h3>
+					<div className="form-control mb-4">
+						<input
+							type="text"
+							className="input input-bordered"
+							placeholder="Cari induk..."
+							value={indukSearch}
+							onChange={(e) => setIndukSearch(e.target.value)}
+							autoFocus
+						/>
+					</div>
+					<div className="max-h-96 overflow-y-auto">
+						<ul className="menu">
+							<li>
+								<button
+									onClick={() => {
+										setIndukFilter('')
+										setIndukModalOpen(false)
+										setIndukSearch('')
+									}}
+									className={indukFilter === '' ? 'active' : ''}
+								>
+									Semua Induk
+								</button>
+							</li>
+							{(indukOptions || [])
+								.filter(option => 
+									indukSearch === '' || 
+									option.toLowerCase().includes(indukSearch.toLowerCase())
+								)
+								.map(v => (
+									<li key={v}>
+										<button
+											onClick={() => {
+												setIndukFilter(v)
+												setIndukModalOpen(false)
+												setIndukSearch('')
+											}}
+											className={indukFilter === v ? 'active' : ''}
+										>
+											{v}
+										</button>
+									</li>
+								))}
+							{indukSearch !== '' && (indukOptions || []).filter(option => 
+								option.toLowerCase().includes(indukSearch.toLowerCase())
+							).length === 0 && (
+								<li><span className="text-base-content/50 text-sm px-4 py-2">Tidak ditemukan</span></li>
+							)}
+						</ul>
+					</div>
+					<div className="modal-action">
+						<form method="dialog">
+							<button className="btn" onClick={() => setIndukModalOpen(false)}>Tutup</button>
+						</form>
+					</div>
+				</div>
+				<form method="dialog" className="modal-backdrop">
+					<button onClick={() => setIndukModalOpen(false)}>close</button>
+				</form>
+			</dialog>
+
+			{/* Modal Filter Status */}
+			<dialog ref={statusModalRef} className="modal">
+				<div className="modal-box">
+					<h3 className="font-bold text-lg mb-4">Pilih Status</h3>
+					<ul className="menu">
+						<li>
+							<button
+								onClick={() => {
+									setStatusFilter('')
+									setStatusModalOpen(false)
+								}}
+								className={statusFilter === '' ? 'active' : ''}
+							>
+								Semua Status
+							</button>
+						</li>
+						<li>
+							<button
+								onClick={() => {
+									setStatusFilter('aktif')
+									setStatusModalOpen(false)
+								}}
+								className={statusFilter === 'aktif' ? 'active' : ''}
+							>
+								Aktif
+							</button>
+						</li>
+						<li>
+							<button
+								onClick={() => {
+									setStatusFilter('pensiun')
+									setStatusModalOpen(false)
+								}}
+								className={statusFilter === 'pensiun' ? 'active' : ''}
+							>
+								Pensiun
+							</button>
+						</li>
+					</ul>
+					<div className="modal-action">
+						<form method="dialog">
+							<button className="btn" onClick={() => setStatusModalOpen(false)}>Tutup</button>
+						</form>
+					</div>
+				</div>
+				<form method="dialog" className="modal-backdrop">
+					<button onClick={() => setStatusModalOpen(false)}>close</button>
+				</form>
+			</dialog>
 		</div>
 	)
 }
