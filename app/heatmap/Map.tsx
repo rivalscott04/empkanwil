@@ -150,7 +150,7 @@ export default function Map({ data, getMarkerColor, getMarkerRadius, selectedTyp
                 const detailUrl = `/employees/location/${locationSlug}`
                 
                 // Use CSS classes that will apply theme colors via CSS variables
-                return `<div class="heatmap-popup"${idx ? ' style="margin-top:0.75rem; padding-top:0.75rem;"' : ''}>
+                return `<div class="heatmap-popup"${idx ? ' style="margin-top:0;"' : ''}>
                     ${idx ? '<div class="heatmap-popup-divider"></div>' : ''}
                     <h3 class="heatmap-popup-title">${item.location}</h3>
                     <div class="heatmap-popup-stats">

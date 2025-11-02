@@ -77,7 +77,8 @@ body {
   background-color: hsl(var(--b1)) !important;
   color: hsl(var(--bc)) !important;
   border-radius: var(--radius-box) !important;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid hsl(var(--b3)) !important;
 }
 
 .leaflet-popup-content {
@@ -87,36 +88,43 @@ body {
 
 .leaflet-popup-tip {
   background-color: hsl(var(--b1)) !important;
+  border: 1px solid hsl(var(--b3)) !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
 }
 
 /* Custom popup content styling */
 .heatmap-popup {
   min-width: 220px;
   max-width: 300px;
-  padding: 0;
+  padding: 1rem;
+  background-color: hsl(var(--b1)) !important;
+  color: hsl(var(--bc)) !important;
 }
 
 .heatmap-popup-title {
   font-weight: 600;
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.75rem 0;
   font-size: 1rem;
   line-height: 1.4;
   word-wrap: break-word;
-  color: hsl(var(--bc));
+  color: hsl(var(--bc)) !important;
 }
 
 .heatmap-popup-stats {
-  margin: 0.5rem 0;
-  padding: 0.625rem;
-  background-color: hsl(var(--b2));
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  background-color: hsl(var(--b2)) !important;
   border-radius: var(--radius-box);
+  border: 1px solid hsl(var(--b3));
 }
 
 .heatmap-popup-total {
   margin: 0 0 0.5rem 0;
   font-size: 0.875rem;
   font-weight: 500;
-  color: hsl(var(--bc));
+  color: hsl(var(--bc)) !important;
 }
 
 .heatmap-popup-stats-row {
@@ -151,32 +159,38 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: hsl(var(--bc)) !important;
 }
 
 .heatmap-popup-aktif {
-  color: hsl(var(--su));
+  color: hsl(var(--su)) !important;
+  font-weight: 600;
 }
 
 .heatmap-popup-pensiun {
-  color: hsl(var(--wa));
+  color: hsl(var(--wa)) !important;
+  font-weight: 600;
 }
 
 .heatmap-popup-induk {
-  margin: 0.375rem 0 0.5rem 0;
-  font-size: 0.6875rem;
-  opacity: 0.7;
+  margin: 0.5rem 0 0.75rem 0;
+  font-size: 0.75rem;
   line-height: 1.4;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  color: hsl(var(--bc));
+  color: hsl(var(--bc)) !important;
+  opacity: 0.8;
+  padding: 0.5rem;
+  background-color: hsl(var(--b3)) !important;
+  border-radius: var(--radius-field);
 }
 
 .heatmap-popup-button {
   display: inline-block;
   margin-top: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background-color: hsl(var(--p));
-  color: hsl(var(--pc));
+  background-color: hsl(var(--p)) !important;
+  color: hsl(var(--pc)) !important;
   text-decoration: none;
   border-radius: var(--radius-field);
   font-size: 0.8125rem;
@@ -184,15 +198,23 @@ body {
   text-align: center;
   width: 100%;
   box-sizing: border-box;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, color 0.2s;
+  border: none;
+  cursor: pointer;
 }
 
 .heatmap-popup-button:hover {
-  background-color: hsl(var(--pf));
+  background-color: hsl(var(--pf)) !important;
+  color: hsl(var(--pc)) !important;
+}
+
+.heatmap-popup-button:focus {
+  outline: 2px solid hsl(var(--p));
+  outline-offset: 2px;
 }
 
 .heatmap-popup-divider {
   margin-top: 0.75rem;
-  border-top: 1px solid hsl(var(--bc) / 0.2);
+  border-top: 1px solid hsl(var(--b3)) !important;
   padding-top: 0.75rem;
 }
