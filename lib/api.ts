@@ -27,17 +27,46 @@ export async function apiFetch<T = any>(path: string, init?: RequestInit): Promi
 		...(init?.headers || {}),
 		Authorization: token ? `Bearer ${token}` : ''
 	};
-	const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`,
-		{ ...init, headers, cache: 'no-store' });
-	if (!res.ok) {
-		// Redirect to login if unauthorized
-		if (res.status === 401 && typeof window !== 'undefined') {
-			clearAuthData()
-			window.location.href = '/auth/login'
-			throw new Error('Unauthorized')
+	
+	try {
+		const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`,
+			{ ...init, headers, cache: 'no-store' });
+			
+		if (!res.ok) {
+			// Redirect to login if unauthorized
+			if (res.status === 401 && typeof window !== 'undefined') {
+				clearAuthData()
+				window.location.href = '/auth/login'
+				throw new Error('Unauthorized')
+			}
+			
+			// Try to get JSON error response
+			let errorMessage = `Request failed with status ${res.status}`;
+			try {
+				const json = await res.json();
+				errorMessage = json?.message || json?.error || errorMessage;
+				// Include validation errors if available
+				if (json?.errors) {
+					const errorDetails = Object.values(json.errors).flat().join(', ');
+					errorMessage = errorDetails ? `${errorMessage}: ${errorDetails}` : errorMessage;
+				}
+			} catch {
+				// If not JSON, don't expose raw text in production
+				if (process.env.NODE_ENV === 'development') {
+					const text = await res.text();
+					errorMessage = text || errorMessage;
+				}
+			}
+			
+			throw new Error(errorMessage);
 		}
-		const text = await res.text();
-		throw new Error(text || `Request failed: ${res.status}`);
+		
+		return res.json();
+	} catch (error) {
+		// Log error for debugging (in development only)
+		if (process.env.NODE_ENV === 'development') {
+			console.error('API Error:', error);
+		}
+		throw error;
 	}
-	return res.json();
 }

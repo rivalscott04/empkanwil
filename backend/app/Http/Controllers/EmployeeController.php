@@ -3,32 +3,43 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Http\Requests\EmployeeIndexRequest;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 
 class EmployeeController extends Controller
 {
-	public function index(Request $request)
+	public function index(EmployeeIndexRequest $request)
 	{
 		$this->authorize('viewAny', Employee::class);
 
-		$perPageRaw = $request->query('per_page', 15);
+		$validated = $request->validated();
+		
+		$perPageRaw = $validated['per_page'] ?? '15';
 		$perPage = 15;
 		if (is_string($perPageRaw) && strtolower($perPageRaw) === 'all') {
-			$perPage = 100000; // effectively all
+			// Don't allow 'all' in production
+			if (app()->environment('production')) {
+				$perPage = 500; // Max in production
+			} else {
+				$perPage = 10000; // Max in development
+			}
 		} else {
 			$perPage = (int) $perPageRaw;
-			$allowed = [10, 25, 50, 100, 200, 500, 100000];
+			$allowed = [10, 25, 50, 100, 200, 500];
 			if (!in_array($perPage, $allowed, true)) {
 				$perPage = 15;
 			}
 		}
-		$search = trim($request->query('search', ''));
-		$induk = trim($request->query('induk', ''));
-		$jabatan = trim($request->query('jabatan', ''));
-		$kodeJabatan = trim($request->query('kode_jabatan', ''));
-		$status = trim($request->query('status', '')); // 'aktif' or 'pensiun'
+		
+		// Enforce maximum limit
+		$perPage = min($perPage, 500); // Maximum 500 records per page
+		$search = $validated['search'] ?? '';
+		$induk = $validated['induk'] ?? '';
+		$jabatan = $validated['jabatan'] ?? '';
+		$kodeJabatan = $validated['kode_jabatan'] ?? '';
+		$status = $validated['status'] ?? ''; // 'aktif' or 'pensiun'
 
 		$query = Employee::query();
 		if ($search !== '') {
@@ -56,35 +67,43 @@ class EmployeeController extends Controller
 		}
 
 		if ($induk !== '' || $kodeJabatan !== '' || $jabatan !== '') {
-			// Manual filter by canonical induk with computed mapping, then manual paginate
-			$pageNum = max(1, (int) $request->query('page', 1));
-			$all = $query->get();
-			$filtered = $all;
-			if ($induk !== '') {
-                $filtered = $filtered->filter(function ($e) use ($induk) {
-                    $computed = $this->computeIndukUnit($e->SATUAN_KERJA, $e->kab_kota, $e->KET_JABATAN ?? null);
-					return $computed === $induk;
-				})->values();
-			}
-			if ($kodeJabatan !== '') {
-				$filtered = $filtered->where('KODE_JABATAN', $kodeJabatan)->values();
-			} elseif ($jabatan !== '') {
-				$filtered = $filtered->where('KET_JABATAN', $jabatan)->values();
-			}
-			// Apply status filter after manual filtering if needed
-			if ($status === 'aktif' || $status === 'pensiun') {
-				$today = now()->toDateString();
-				$filtered = $filtered->filter(function ($e) use ($status, $today) {
-					if ($e->TMT_PENSIUN === null) {
-						return $status === 'aktif';
+		// Manual filter by canonical induk with computed mapping, then manual paginate
+		$pageNum = max(1, (int) ($validated['page'] ?? 1));
+			// Use chunking to avoid memory exhaustion for large datasets
+			$filtered = collect();
+			$query->chunk(1000, function ($chunk) use (&$filtered, $induk, $kodeJabatan, $jabatan, $status) {
+				foreach ($chunk as $e) {
+					// Filter by induk
+					if ($induk !== '') {
+						$computed = $this->computeIndukUnit($e->SATUAN_KERJA, $e->kab_kota, $e->KET_JABATAN ?? null);
+						if ($computed !== $induk) {
+							continue;
+						}
 					}
-					if ($status === 'aktif') {
-						return $e->TMT_PENSIUN > $today;
-					} else {
-						return $e->TMT_PENSIUN <= $today;
+					// Filter by kode_jabatan or jabatan
+					if ($kodeJabatan !== '') {
+						if ($e->KODE_JABATAN !== $kodeJabatan) {
+							continue;
+						}
+					} elseif ($jabatan !== '') {
+						if ($e->KET_JABATAN !== $jabatan) {
+							continue;
+						}
 					}
-				})->values();
-			}
+					// Filter by status
+					if ($status === 'aktif' || $status === 'pensiun') {
+						$today = now()->toDateString();
+						if ($e->TMT_PENSIUN === null) {
+							if ($status !== 'aktif') continue;
+						} elseif ($status === 'aktif') {
+							if ($e->TMT_PENSIUN <= $today) continue;
+						} else {
+							if ($e->TMT_PENSIUN > $today) continue;
+						}
+					}
+					$filtered->push($e);
+				}
+			});
 			// Sort ALL filtered data first (before pagination) by induk_unit (Kanwil first)
 			$kanwilName = 'Kantor Wilayah Kementerian Agama Provinsi Nusa Tenggara Barat';
 			$filtered->transform(function ($e) {
@@ -100,8 +119,8 @@ class EmployeeController extends Controller
 			})->values();
 			
 			$totalCount = $filtered->count();
-			// If per_page is "all" (100000), return all items without pagination
-			$items = $perPage >= 100000 ? $filtered->values() : $filtered->slice(($pageNum - 1) * $perPage, $perPage)->values();
+			// Apply pagination with max limit
+			$items = $filtered->slice(($pageNum - 1) * $perPage, $perPage)->values();
 			return response()->json([
 				'success' => true,
 				'data' => [
@@ -119,10 +138,14 @@ class EmployeeController extends Controller
 		$query->where('KET_JABATAN', $jabatan);
 	}
 	
-	// Handle "all" (per_page >= 100000) without pagination
-	if ($perPage >= 100000) {
-		$pageNum = max(1, (int) $request->query('page', 1));
-		$all = $query->get();
+	// Handle large per_page requests with chunking
+	if ($perPage > 100) {
+		$pageNum = max(1, (int) ($validated['page'] ?? 1));
+		// Use chunking for large datasets
+		$all = collect();
+		$query->chunk(1000, function ($chunk) use (&$all) {
+			$all = $all->merge($chunk);
+		});
 		$totalCount = $all->count();
 		
 		// append computed field: induk_unit and sort by induk_unit (Kanwil first)
@@ -153,8 +176,11 @@ class EmployeeController extends Controller
 		]);
 	}
 	
-	// Get all data first, compute induk_unit, sort, then paginate manually
-	$all = $query->get();
+	// Get data with chunking, compute induk_unit, sort, then paginate manually
+	$all = collect();
+	$query->chunk(1000, function ($chunk) use (&$all) {
+		$all = $all->merge($chunk);
+	});
 	
 	// Compute induk_unit for all records
 	$all->transform(function ($e) {
@@ -173,7 +199,7 @@ class EmployeeController extends Controller
 	})->values();
 	
 	// Manual pagination after sorting
-	$pageNum = max(1, (int) $request->query('page', 1));
+	$pageNum = max(1, (int) ($validated['page'] ?? 1));
 	$totalCount = $sorted->count();
 	$paginatedData = $sorted->slice(($pageNum - 1) * $perPage, $perPage)->values();
 	
@@ -316,13 +342,18 @@ class EmployeeController extends Controller
 			});
 		}
 
-		// Get employee counts per induk unit
+		// Get employee counts per induk unit using chunking
 		$employeeCounts = [];
 		foreach ($indukUnits as $indukUnit) {
-			$employees = clone $query;
-			$count = $employees->get()->filter(function($emp) use ($indukUnit) {
-				return $this->computeIndukUnit($emp->SATUAN_KERJA, $emp->kab_kota, $emp->KET_JABATAN) === $indukUnit;
-			})->count();
+			$count = 0;
+			$employeesQuery = clone $query;
+			$employeesQuery->chunk(1000, function ($chunk) use (&$count, $indukUnit) {
+				foreach ($chunk as $emp) {
+					if ($this->computeIndukUnit($emp->SATUAN_KERJA, $emp->kab_kota, $emp->KET_JABATAN) === $indukUnit) {
+						$count++;
+					}
+				}
+			});
 
 			$employeeCounts[$indukUnit] = $count;
 		}

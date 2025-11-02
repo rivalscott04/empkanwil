@@ -47,7 +47,7 @@ return [
     |
     */
 
-    'expiration' => null,
+    'expiration' => env('SANCTUM_EXPIRATION', 60 * 8), // 8 jam default
 
     /*
     |--------------------------------------------------------------------------

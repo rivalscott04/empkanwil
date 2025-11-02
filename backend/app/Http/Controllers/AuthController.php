@@ -65,4 +65,29 @@ class AuthController extends Controller
 		$request->user()->currentAccessToken()?->delete();
 		return response()->json(['success' => true]);
 	}
+
+	public function refresh(Request $request)
+	{
+		$user = $request->user()->loadMissing('role');
+		
+		// Delete current token
+		$request->user()->currentAccessToken()?->delete();
+		
+		// Create new token
+		$token = $user->createToken('web')->plainTextToken;
+		
+		return response()->json([
+			'success' => true,
+			'data' => [
+				'access_token' => $token,
+				'token_type' => 'Bearer',
+				'user' => [
+					'id' => $user->id,
+					'name' => $user->name,
+					'email' => $user->email,
+					'role' => $user->role?->name,
+				],
+			],
+		]);
+	}
 }
