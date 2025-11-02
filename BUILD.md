@@ -159,10 +159,12 @@ Next.js Frontend (localhost:3800)
    Type=simple
    User=www-data
    WorkingDirectory=/var/www/empkanwil
+   # Entry point: npm start akan menjalankan "next start -p 3800" dari package.json
    ExecStart=/usr/bin/npm start
    Restart=always
    RestartSec=10
    Environment=NODE_ENV=production
+   # Optional: Jika npm tidak di /usr/bin/npm, cek dengan: which npm
    
    [Install]
    WantedBy=multi-user.target
@@ -174,10 +176,28 @@ Next.js Frontend (localhost:3800)
    sudo systemctl status newemp
    ```
    
+   **Entry Point untuk Next.js:**
+   - **Entry point:** `ExecStart=/usr/bin/npm start`
+   - `npm start` akan menjalankan script `"start": "next start -p 3800"` dari `package.json`
+   - Next.js akan serve aplikasi dari folder `.next/` yang sudah di-build
+   - WorkingDirectory harus di **root project** (bukan di folder `dist` atau `build`)
+   
+   **Alternatif Entry Point (jika npm path berbeda):**
+   ```ini
+   # Opsi 1: Cek npm path dengan: which npm
+   ExecStart=/usr/local/bin/npm start
+   
+   # Opsi 2: Langsung call next (jika node_modules sudah di PATH)
+   ExecStart=/usr/bin/node /var/www/empkanwil/node_modules/.bin/next start -p 3800
+   
+   # Opsi 3: Pakai npx
+   ExecStart=/usr/bin/npx next start -p 3800
+   ```
+   
    **Perbedaan dengan JS biasa:**
    - JS biasa: `ExecStart=node server.js` atau `ExecStart=node app.js`
-   - Next.js: `ExecStart=/usr/bin/npm start` (next start)
-   - WorkingDirectory harus di root project (bukan di folder `dist` atau `build`)
+   - Next.js: `ExecStart=/usr/bin/npm start` (yang jalan: `next start -p 3800`)
+   - Next.js tidak punya file entry point seperti `server.js`, tapi langsung serve dari `.next/` folder
 6. **Setup Nginx reverse proxy** (penting untuk HTTPS):
    
    **Next.js berbeda dengan static HTML!** Nginx tidak pointing ke folder, tapi ke **process Node.js** yang berjalan di port 3800.

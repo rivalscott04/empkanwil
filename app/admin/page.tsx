@@ -27,9 +27,13 @@ export default function AdminPage() {
     const [form, setForm] = useState<{name:string;email:string;password:string;role_id:number|''}>({ name: '', email: '', password: '', role_id: '' })
 
     useEffect(() => {
-        const r = localStorage.getItem('role') || ''
+        // Check both localStorage and sessionStorage for role (same as Sidebar/Navbar)
+        const r = localStorage.getItem('role') || sessionStorage.getItem('role') || ''
         setRole(r)
-        if (r !== 'admin') { router.replace('/') }
+        if (r !== 'admin') { 
+            router.replace('/') 
+            return
+        }
         void fetchRoles()
         void fetchUsers(1, '')
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -65,15 +69,21 @@ export default function AdminPage() {
     }
 
     async function submitForm() {
-        const payload: any = { ...form }
-        if (editing) {
-            if (!payload.password) delete payload.password
-            await apiFetch(`/users/${editing.id}`, { method: 'PUT', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } })
-        } else {
-            await apiFetch(`/users`, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } })
+        try {
+            const payload: any = { ...form }
+            if (editing) {
+                if (!payload.password) delete payload.password
+                await apiFetch(`/users/${editing.id}`, { method: 'PUT', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } })
+                toast('User berhasil diupdate', 'success')
+            } else {
+                await apiFetch(`/users`, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } })
+                toast('User berhasil dibuat', 'success')
+            }
+            ;(document.getElementById('user_modal') as HTMLDialogElement)?.close()
+            await fetchUsers(page)
+        } catch (e: any) {
+            toast(e?.message || 'Gagal menyimpan user', 'error')
         }
-        ;(document.getElementById('user_modal') as HTMLDialogElement)?.close()
-        await fetchUsers(page)
     }
 
     async function removeUser(u: UserRow) {
