@@ -31,7 +31,19 @@ export default function LoginPage() {
 				body: JSON.stringify({ identifier, password })
 			})
 		const json = await res.json()
-		if (!res.ok || !json?.data?.access_token) throw new Error(json?.message||'Login gagal')
+		
+		if (!res.ok) {
+			// Handle validation errors from Laravel (422)
+			if (res.status === 422 && json?.errors) {
+				const errorMessages = Object.values(json.errors).flat() as string[]
+				throw new Error(errorMessages.join(', ') || json?.message || 'Validasi gagal')
+			}
+			throw new Error(json?.message || 'Login gagal')
+		}
+		
+		if (!json?.data?.access_token) {
+			throw new Error(json?.message || 'Token tidak ditemukan')
+		}
 		
 		// Use localStorage if remember me is checked, sessionStorage otherwise
 		const storage = rememberMe ? localStorage : sessionStorage

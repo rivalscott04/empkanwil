@@ -4,7 +4,6 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use Throwable;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -29,7 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         // Custom API exception handling - hide sensitive errors in production
-        $exceptions->render(function (Throwable $e, Request $request) {
+        $exceptions->render(function (\Throwable $e, Request $request) {
             if ($request->is('api/*') || $request->wantsJson()) {
                 // Only use custom handler if function exists (after composer dump-autoload)
                 if (function_exists('App\Helpers\handleApiException')) {
