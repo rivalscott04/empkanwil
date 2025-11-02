@@ -205,24 +205,54 @@ export default function EmployeesPage() {
 	}
 
 	function handlePerPageChange(value: string) {
-		let next = parseInt(value, 10)
-		if (value === 'all') {
-			next = 100000 // effectively all
-		}
+		const next = parseInt(value, 10)
 		setPage(1)
 		setPerPage(next)
 		load(1, search, next)
 	}
 
-	async function exportCsv(sepType: 'comma' | 'semicolon') {
+	async function fetchAllData(): Promise<Employee[]> {
+		const indukParam = indukFilter ? `&induk=${encodeURIComponent(indukFilter)}` : ''
+		const statusParam = statusFilter ? `&status=${encodeURIComponent(statusFilter)}` : ''
+		const allRows: Employee[] = []
+		let currentPage = 1
+		const perPageFetch = 500 // Use max allowed per page
+		
+		while (true) {
+			const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPageFetch}&page=${currentPage}&search=${encodeURIComponent(search)}${indukParam}${statusParam}`)
+			const pageRows = json.data.data || []
+			if (pageRows.length === 0) break
+			
+			allRows.push(...pageRows)
+			
+			// Check if there are more pages
+			const total = json.data.total || 0
+			if (allRows.length >= total || pageRows.length < perPageFetch) break
+			
+			currentPage++
+		}
+		
+		return allRows
+	}
+
+	async function exportCsv(sepType: 'comma' | 'semicolon', exportAll: boolean = false) {
 		try {
 			setExporting(true)
-			// fetch data according to current perPage selection; if very large, backend returns all
-			const perPageParam = perPage >= 100000 ? 'all' : perPage
-			const indukParam = indukFilter ? `&induk=${encodeURIComponent(indukFilter)}` : ''
-			const statusParam = statusFilter ? `&status=${encodeURIComponent(statusFilter)}` : ''
-			const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPageParam}&page=1&search=${encodeURIComponent(search)}${indukParam}${statusParam}`)
-			let rows = json.data.data || []
+			if (exportAll) {
+				info('Mengambil semua data... Ini mungkin memakan waktu beberapa saat.')
+			}
+			let rows: Employee[] = []
+			
+			if (exportAll) {
+				// Fetch all data without pagination limit
+				rows = await fetchAllData()
+			} else {
+				// Fetch data according to current perPage selection (current page only)
+				const indukParam = indukFilter ? `&induk=${encodeURIComponent(indukFilter)}` : ''
+				const statusParam = statusFilter ? `&status=${encodeURIComponent(statusFilter)}` : ''
+				const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPage}&page=${page}&search=${encodeURIComponent(search)}${indukParam}${statusParam}`)
+				rows = json.data.data || []
+			}
 			// build CSV with selectable separator
 			const sep = sepType === 'semicolon' ? ';' : ','
 			const header = ['NIP','Nama','Unit Kerja','Induk','Jabatan','Pangkat','Golongan']
@@ -241,7 +271,8 @@ export default function EmployeesPage() {
 			}
 			const now = new Date()
 			const pad = (n: number) => String(n).padStart(2, '0')
-			const fname = `pegawai_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}_${sepType === 'semicolon' ? 'semicolon' : 'comma'}_${rows.length}.csv`
+			const suffix = exportAll ? 'all' : `page${perPage}`
+			const fname = `pegawai_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}_${sepType === 'semicolon' ? 'semicolon' : 'comma'}_${suffix}_${rows.length}.csv`
 			const blob = new Blob(["\uFEFF" + csvLines.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
 			const url = URL.createObjectURL(blob)
 			const a = document.createElement('a')
@@ -249,21 +280,37 @@ export default function EmployeesPage() {
 			a.download = fname
 			a.click()
 			URL.revokeObjectURL(url)
+			if (exportAll) {
+				info(`Berhasil mengekspor ${rows.length.toLocaleString('id-ID')} data ke file ${fname}`, 'Export Berhasil')
+			}
 		} catch (e) {
 			console.error('Export failed', e)
+			if (exportAll) {
+				info('Gagal mengekspor data. Silakan coba lagi.', 'Export Gagal')
+			}
 		} finally {
 			setExporting(false)
 		}
 	}
 
-	async function exportXlsxLike() {
+	async function exportXlsxLike(exportAll: boolean = false) {
 		try {
 			setExporting(true)
-			const perPageParam = perPage >= 100000 ? 'all' : perPage
-			const indukParam = indukFilter ? `&induk=${encodeURIComponent(indukFilter)}` : ''
-			const statusParam = statusFilter ? `&status=${encodeURIComponent(statusFilter)}` : ''
-			const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPageParam}&page=1&search=${encodeURIComponent(search)}${indukParam}${statusParam}`)
-			let rows = json.data.data || []
+			if (exportAll) {
+				info('Mengambil semua data... Ini mungkin memakan waktu beberapa saat.')
+			}
+			let rows: Employee[] = []
+			
+			if (exportAll) {
+				// Fetch all data without pagination limit
+				rows = await fetchAllData()
+			} else {
+				// Fetch data according to current perPage selection (current page only)
+				const indukParam = indukFilter ? `&induk=${encodeURIComponent(indukFilter)}` : ''
+				const statusParam = statusFilter ? `&status=${encodeURIComponent(statusFilter)}` : ''
+				const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPage}&page=${page}&search=${encodeURIComponent(search)}${indukParam}${statusParam}`)
+				rows = json.data.data || []
+			}
 			// Create a minimal HTML table that Excel can open as a spreadsheet
 			const esc = (s: string | null | undefined) => (s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
 			const rowsHtml = rows.map(r => (
@@ -274,11 +321,19 @@ export default function EmployeesPage() {
 			const url = URL.createObjectURL(blob)
 			const a = document.createElement('a')
 			a.href = url
-			a.download = `pegawai_${new Date().toISOString().slice(0,16).replace(/[-:T]/g,'')}.xlsx`
+			const suffix = exportAll ? 'all' : `page${perPage}`
+			const timestamp = new Date().toISOString().slice(0,16).replace(/[-:T]/g,'')
+			a.download = `pegawai_${timestamp}_${suffix}_${rows.length}.xlsx`
 			a.click()
 			URL.revokeObjectURL(url)
+			if (exportAll) {
+				info(`Berhasil mengekspor ${rows.length.toLocaleString('id-ID')} data ke file Excel`, 'Export Berhasil')
+			}
 		} catch (e) {
 			console.error('Export failed', e)
+			if (exportAll) {
+				info('Gagal mengekspor data. Silakan coba lagi.', 'Export Gagal')
+			}
 		} finally {
 			setExporting(false)
 		}
@@ -312,12 +367,13 @@ export default function EmployeesPage() {
 				{/* Row 1: Per-page on far left */}
 				<div className="flex items-center gap-2">
 					<span className="text-sm opacity-70">Jumlah Data</span>
-					<select className="select select-sm w-24" value={perPage >= 100000 ? 'all' : String(perPage)} onChange={(e)=>handlePerPageChange(e.target.value)}>
+					<select className="select select-sm w-24" value={String(perPage)} onChange={(e)=>handlePerPageChange(e.target.value)}>
 						<option value="10">10</option>
 						<option value="25">25</option>
 						<option value="50">50</option>
 						<option value="100">100</option>
-						<option value="all">Semua</option>
+						<option value="200">200</option>
+						<option value="500">500</option>
 					</select>
 				</div>
 				{/* Row 2: Search full width */}
@@ -374,10 +430,16 @@ export default function EmployeesPage() {
 						<div tabIndex={0} role="button" className="btn btn-sm btn-primary whitespace-nowrap" aria-haspopup="menu">
 							{exporting ? <span className="loading loading-dots loading-sm" /> : 'Export'}
 						</div>
-						<ul className="dropdown-content menu bg-base-100 rounded-box shadow p-2 w-56" role="menu">
-							<li><button onClick={()=>exportCsv('comma')}>CSV (Koma ,)</button></li>
-							<li><button onClick={()=>exportCsv('semicolon')}>CSV (Titik Koma ;)</button></li>
-							<li><button onClick={()=>exportXlsxLike()}>Excel (.xlsx)</button></li>
+						<ul className="dropdown-content menu bg-base-100 rounded-box shadow p-2 w-64 z-50" role="menu">
+							<li className="menu-title"><span>Halaman Saat Ini ({perPage} data)</span></li>
+							<li><button onClick={()=>exportCsv('comma', false)}>CSV (Koma ,)</button></li>
+							<li><button onClick={()=>exportCsv('semicolon', false)}>CSV (Titik Koma ;)</button></li>
+							<li><button onClick={()=>exportXlsxLike(false)}>Excel (.xlsx)</button></li>
+							<li><hr className="my-1" /></li>
+							<li className="menu-title"><span>Semua Data (Tanpa Paginasi)</span></li>
+							<li><button onClick={()=>exportCsv('comma', true)}>CSV (Koma ,)</button></li>
+							<li><button onClick={()=>exportCsv('semicolon', true)}>CSV (Titik Koma ;)</button></li>
+							<li><button onClick={()=>exportXlsxLike(true)}>Excel (.xlsx)</button></li>
 						</ul>
 					</div>
 				</div>
