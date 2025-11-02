@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Http\Requests\EmployeeIndexRequest;
+use App\Http\Requests\EmployeeByLocationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
@@ -342,20 +343,28 @@ class EmployeeController extends Controller
 			});
 		}
 
-		// Get employee counts per induk unit using chunking
+		// Get employee counts per induk unit with breakdown aktif/pensiun using chunking
+		// Single pass calculation to avoid N+1 queries
 		$employeeCounts = [];
+		$today = now()->toDateString();
+		
 		foreach ($indukUnits as $indukUnit) {
-			$count = 0;
+			$stats = ['total' => 0, 'aktif' => 0, 'pensiun' => 0];
 			$employeesQuery = clone $query;
-			$employeesQuery->chunk(1000, function ($chunk) use (&$count, $indukUnit) {
+			$employeesQuery->chunk(1000, function ($chunk) use (&$stats, $indukUnit, $today) {
 				foreach ($chunk as $emp) {
 					if ($this->computeIndukUnit($emp->SATUAN_KERJA, $emp->kab_kota, $emp->KET_JABATAN) === $indukUnit) {
-						$count++;
+						$stats['total']++;
+						if ($emp->TMT_PENSIUN === null || $emp->TMT_PENSIUN > $today) {
+							$stats['aktif']++;
+						} else {
+							$stats['pensiun']++;
+						}
 					}
 				}
 			});
 
-			$employeeCounts[$indukUnit] = $count;
+			$employeeCounts[$indukUnit] = $stats;
 		}
 
 		// Get coordinates from database
@@ -372,10 +381,13 @@ class EmployeeController extends Controller
 				$locationName = str_replace('Kantor Kementerian Agama ', '', $indukUnit);
 				$locationName = str_replace('Kantor Wilayah Kementerian Agama Provinsi ', '', $locationName);
 
+				$stats = $employeeCounts[$indukUnit] ?? ['total' => 0, 'aktif' => 0, 'pensiun' => 0];
 				$data[] = [
 					'location' => $locationName,
 					'induk_unit' => $indukUnit,
-					'count' => $employeeCounts[$indukUnit] ?? 0,
+					'count' => $stats['total'],
+					'aktif' => $stats['aktif'],
+					'pensiun' => $stats['pensiun'],
 					'latitude' => (float) $coord->latitude,
 					'longitude' => (float) $coord->longitude,
 				];
@@ -385,6 +397,118 @@ class EmployeeController extends Controller
 		return response()->json([
 			'success' => true,
 			'data' => $data,
+		]);
+	}
+
+	/**
+	 * Get employees by location (induk_unit) with statistics
+	 * Security: Uses same authorization as index (viewAny policy)
+	 * Performance: Uses chunking to avoid N+1 queries and memory issues
+	 */
+	public function byLocation(EmployeeByLocationRequest $request)
+	{
+		$this->authorize('viewAny', Employee::class);
+
+		$validated = $request->validated();
+		$indukUnit = $validated['induk_unit'];
+		$locationName = $validated['location'] ?? '';
+		$search = $validated['search'] ?? '';
+		$status = $validated['status'] ?? '';
+		$perPage = (int) $validated['per_page'];
+		$pageNum = max(1, (int) $validated['page']);
+
+		// Validate induk_unit is in canonical list (security)
+		$canonicalIndukUnits = $this->canonicalIndukList();
+		if (!in_array($indukUnit, $canonicalIndukUnits, true)) {
+			return response()->json([
+				'success' => false,
+				'message' => 'Invalid induk_unit',
+			], 400);
+		}
+
+		// Build base query
+		$query = Employee::query();
+
+		// Apply search filter
+		if ($search !== '') {
+			$query->where(function ($q) use ($search) {
+				$q->where('NAMA_LENGKAP', 'like', "%$search%")
+					->orWhere('SATUAN_KERJA', 'like', "%$search%")
+					->orWhere('KET_JABATAN', 'like', "%$search%")
+					->orWhere('NIP_BARU', 'like', "%$search%");
+			});
+		}
+
+		// Apply status filter
+		if ($status === 'aktif') {
+			$query->where(function ($q) {
+				$q->whereNull('TMT_PENSIUN')
+					->orWhere('TMT_PENSIUN', '>', now()->toDateString());
+			});
+		} elseif ($status === 'pensiun') {
+			$query->whereNotNull('TMT_PENSIUN')
+				->where('TMT_PENSIUN', '<=', now()->toDateString());
+		}
+
+		// Use chunking to filter by computed induk_unit and calculate statistics in one pass
+		$filtered = collect();
+		$stats = ['total' => 0, 'aktif' => 0, 'pensiun' => 0];
+		$today = now()->toDateString();
+
+		$query->chunk(1000, function ($chunk) use (&$filtered, &$stats, $indukUnit, $today) {
+			foreach ($chunk as $e) {
+				// Compute induk_unit and check match
+				$computedInduk = $this->computeIndukUnit($e->SATUAN_KERJA, $e->kab_kota, $e->KET_JABATAN ?? null);
+				if ($computedInduk !== $indukUnit) {
+					continue;
+				}
+
+				// Add computed field
+				$e->induk_unit = $computedInduk;
+
+				// Calculate statistics in same pass (avoid N+1)
+				$stats['total']++;
+				if ($e->TMT_PENSIUN === null || $e->TMT_PENSIUN > $today) {
+					$stats['aktif']++;
+				} else {
+					$stats['pensiun']++;
+				}
+
+				$filtered->push($e);
+			}
+		});
+
+		// Sort: by NAMA_LENGKAP
+		$sorted = $filtered->sortBy(function ($e) {
+			return strtolower($e->NAMA_LENGKAP ?? '');
+		})->values();
+
+		// Manual pagination
+		$totalCount = $sorted->count();
+		$paginatedData = $sorted->slice(($pageNum - 1) * $perPage, $perPage)->values();
+
+		// If location name not provided, extract from induk_unit
+		if ($locationName === '') {
+			$locationName = str_replace('Kantor Kementerian Agama ', '', $indukUnit);
+			$locationName = str_replace('Kantor Wilayah Kementerian Agama Provinsi ', '', $locationName);
+		}
+
+		return response()->json([
+			'success' => true,
+			'data' => [
+				'location' => $locationName,
+				'induk_unit' => $indukUnit,
+				'statistics' => $stats,
+				'employees' => [
+					'data' => $paginatedData,
+					'total' => $totalCount,
+					'per_page' => $perPage,
+					'current_page' => $pageNum,
+					'last_page' => (int) ceil($totalCount / $perPage),
+					'from' => $totalCount > 0 ? (($pageNum - 1) * $perPage) + 1 : 0,
+					'to' => min($pageNum * $perPage, $totalCount),
+				],
+			],
 		]);
 	}
 

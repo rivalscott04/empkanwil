@@ -55,6 +55,8 @@ export type HeatmapData = {
 	location: string
 	induk_unit: string
 	count: number
+	aktif?: number
+	pensiun?: number
 	latitude: number
 	longitude: number
 }

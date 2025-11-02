@@ -19,6 +19,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 	Route::get('/employees/induk-units', [EmployeeController::class, 'indukUnits']);
 	Route::get('/employees/statistics', [EmployeeController::class, 'statistics']);
 	Route::get('/employees/heatmap', [EmployeeController::class, 'heatmap']);
+	Route::get('/employees/by-location', [EmployeeController::class, 'byLocation']);
 	Route::get('/employees/distinct', [EmployeeController::class, 'distinct']);
 	Route::get('/employees/jabatan-options', [EmployeeController::class, 'jabatanOptions']);
 	Route::get('/employees/{employee:NIP_BARU}', [EmployeeController::class, 'show']);

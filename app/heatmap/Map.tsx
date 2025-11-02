@@ -49,6 +49,20 @@ function createPinSvg(color: string, size: number): string {
     `
 }
 
+// Helper function to create inline SVG icons (lucide-react style)
+function createIconSvg(iconType: 'check-circle' | 'user-minus', size: number = 16, color: string = 'currentColor'): string {
+    const iconPaths: Record<string, string> = {
+        'check-circle': '<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+        'user-minus': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="23" y1="11" x2="17" y2="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+    }
+    
+    return `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; flex-shrink:0;">
+            ${iconPaths[iconType]}
+        </svg>
+    `
+}
+
 export default function Map({ data, getMarkerColor, getMarkerRadius, selectedType }: MapProps) {
     const containerRef = useRef<HTMLDivElement | null>(null)
     const mapRef = useRef<LeafletMap | null>(null)
@@ -129,13 +143,40 @@ export default function Map({ data, getMarkerColor, getMarkerRadius, selectedTyp
         }
 
         function buildPopup(items: HeatmapData[]) {
-            return items.map((item, idx) => (
-                `<div style="min-width:200px;${idx ? 'margin-top:12px;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px;' : ''}">
-                    <h3 style="font-weight:600; margin:0;">${item.location}</h3>
-                    <p style="margin:6px 0 0; font-size:14px;">Jumlah Pegawai: <strong>${item.count}</strong></p>
-                    <p style="margin:4px 0 0; font-size:12px; opacity:0.7;">${item.induk_unit}</p>
+            return items.map((item, idx) => {
+                const aktif = item.aktif ?? 0
+                const pensiun = item.pensiun ?? 0
+                const locationSlug = encodeURIComponent(item.induk_unit)
+                const detailUrl = `/employees/location/${locationSlug}`
+                
+                return `<div style="min-width:220px; max-width:300px;${idx ? 'margin-top:12px;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px;' : ''}">
+                    <h3 style="font-weight:600; margin:0 0 8px 0; font-size:16px; line-height:1.4; word-wrap:break-word;">${item.location}</h3>
+                    <div style="margin:8px 0; padding:10px; background:rgba(0,0,0,0.1); border-radius:6px;">
+                        <p style="margin:0 0 8px 0; font-size:14px; font-weight:500;">
+                            Total: <strong>${item.count.toLocaleString('id-ID')}</strong>
+                        </p>
+                        <div style="display:flex; flex-wrap:wrap; gap:10px 12px; margin-top:6px;">
+                            <div style="display:flex; align-items:center; gap:6px; font-size:13px; min-width:0; flex:1 1 120px;">
+                                ${createIconSvg('check-circle', 16, '#22c55e')}
+                                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                    Aktif: <strong style="color:#22c55e;">${aktif.toLocaleString('id-ID')}</strong>
+                                </span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:6px; font-size:13px; min-width:0; flex:1 1 120px;">
+                                ${createIconSvg('user-minus', 16, '#f97316')}
+                                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                    Pensiun: <strong style="color:#f97316;">${pensiun.toLocaleString('id-ID')}</strong>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <p style="margin:6px 0 8px 0; font-size:11px; opacity:0.7; line-height:1.4; word-wrap:break-word; overflow-wrap:break-word;">${item.induk_unit}</p>
+                    <a href="${detailUrl}" 
+                       style="display:inline-block; margin-top:8px; padding:8px 12px; background:#3b82f6; color:white; text-decoration:none; border-radius:4px; font-size:13px; font-weight:500; text-align:center; width:100%; box-sizing:border-box; transition:background 0.2s;">
+                        Lihat Daftar Pegawai →
+                    </a>
                 </div>`
-            )).join('')
+            }).join('')
         }
 
         data.forEach((item) => {
