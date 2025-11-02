@@ -207,19 +207,20 @@ export default function AdminPage() {
                             <span className="label">Email</span>
                             <input type="email" value={form.email} onChange={(e)=>setForm(v=>({...v,email:e.target.value}))} />
                         </label>
-                        <label className="input">
-                            <span className="label">
+                        <div className="space-y-1">
+                            <div className="label">
                                 Password {editing && <span className="opacity-60">(biarkan kosong jika tidak diubah)</span>}
                                 {!editing && <span className="opacity-60">(minimal 6 karakter)</span>}
-                            </span>
+                            </div>
                             <input 
+                                className="input"
                                 type="password" 
                                 value={form.password} 
                                 onChange={(e)=>setForm(v=>({...v,password:e.target.value}))}
                                 placeholder={editing ? "Biarkan kosong untuk tidak mengubah" : "Minimal 6 karakter"}
                                 required={!editing}
                             />
-                        </label>
+                        </div>
                         <label className="input">
                             <span className="label">Role</span>
                             <select className="select" value={form.role_id} onChange={(e)=>setForm(v=>({...v, role_id: e.target.value ? Number(e.target.value) : ''}))}>
