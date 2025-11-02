@@ -72,16 +72,16 @@ body {
   z-index: 0;
 }
 
-/* Leaflet Popup - Theme-aware styling using daisyUI variables - MAX SPECIFICITY */
+/* Leaflet Popup - Solid colors sesuai tema default (dark navy blue & orange) */
 div.leaflet-popup-content-wrapper,
 .leaflet-container .leaflet-popup-content-wrapper {
-  background-color: hsl(var(--b1)) !important;
-  background: hsl(var(--b1)) !important;
+  background-color: #1a1d29 !important;
+  background: #1a1d29 !important;
   background-image: none !important;
-  color: hsl(var(--bc)) !important;
-  border-radius: var(--radius-box) !important;
+  color: #ffffff !important;
+  border-radius: 0.5rem !important;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3) !important;
-  border: 1px solid hsl(var(--b3)) !important;
+  border: 1px solid #252932 !important;
   opacity: 1 !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -91,17 +91,17 @@ div.leaflet-popup-content,
 .leaflet-container .leaflet-popup-content {
   margin: 0 !important;
   padding: 0 !important;
-  background: hsl(var(--b1)) !important;
-  background-color: hsl(var(--b1)) !important;
+  background: #1a1d29 !important;
+  background-color: #1a1d29 !important;
   background-image: none !important;
 }
 
 div.leaflet-popup-tip-container .leaflet-popup-tip,
 .leaflet-container .leaflet-popup-tip {
-  background-color: hsl(var(--b1)) !important;
-  background: hsl(var(--b1)) !important;
+  background-color: #1a1d29 !important;
+  background: #1a1d29 !important;
   background-image: none !important;
-  border: 1px solid hsl(var(--b3)) !important;
+  border: 1px solid #252932 !important;
   border-top: none !important;
   border-left: none !important;
   border-right: none !important;
@@ -110,7 +110,7 @@ div.leaflet-popup-tip-container .leaflet-popup-tip,
 
 a.leaflet-popup-close-button,
 .leaflet-container .leaflet-popup-close-button {
-  color: hsl(var(--bc)) !important;
+  color: #ffffff !important;
   opacity: 1 !important;
 }
 
@@ -119,9 +119,9 @@ a.leaflet-popup-close-button,
   min-width: 220px;
   max-width: 300px;
   padding: 1rem;
-  background-color: hsl(var(--b1)) !important;
-  background: hsl(var(--b1)) !important;
-  color: hsl(var(--bc)) !important;
+  background-color: #1a1d29 !important;
+  background: #1a1d29 !important;
+  color: #ffffff !important;
   opacity: 1 !important;
   backdrop-filter: none !important;
 }
@@ -132,16 +132,16 @@ a.leaflet-popup-close-button,
   font-size: 1rem;
   line-height: 1.4;
   word-wrap: break-word;
-  color: hsl(var(--bc)) !important;
+  color: #ffffff !important;
 }
 
 .heatmap-popup-stats {
   margin: 0.75rem 0;
   padding: 0.75rem;
-  background-color: hsl(var(--b2)) !important;
-  background: hsl(var(--b2)) !important;
-  border-radius: var(--radius-box);
-  border: 1px solid hsl(var(--b3));
+  background-color: #232633 !important;
+  background: #232633 !important;
+  border-radius: 0.5rem;
+  border: 1px solid #252932;
   opacity: 1 !important;
 }
 
@@ -149,7 +149,7 @@ a.leaflet-popup-close-button,
   margin: 0 0 0.5rem 0;
   font-size: 0.875rem;
   font-weight: 500;
-  color: hsl(var(--bc)) !important;
+  color: #ffffff !important;
 }
 
 .heatmap-popup-stats-row {
@@ -184,16 +184,16 @@ a.leaflet-popup-close-button,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: hsl(var(--bc)) !important;
+  color: #ffffff !important;
 }
 
 .heatmap-popup-aktif {
-  color: hsl(var(--su)) !important;
+  color: #4ade80 !important;
   font-weight: 600;
 }
 
 .heatmap-popup-pensiun {
-  color: hsl(var(--wa)) !important;
+  color: #fbbf24 !important;
   font-weight: 600;
 }
 
@@ -203,23 +203,23 @@ a.leaflet-popup-close-button,
   line-height: 1.4;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  color: hsl(var(--bc)) !important;
+  color: #ffffff !important;
   opacity: 1 !important;
   padding: 0.5rem;
-  background-color: hsl(var(--b3)) !important;
-  background: hsl(var(--b3)) !important;
-  border-radius: var(--radius-field);
+  background-color: #252932 !important;
+  background: #252932 !important;
+  border-radius: 0.25rem;
 }
 
 .heatmap-popup-button {
   display: inline-block;
   margin-top: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background-color: hsl(var(--p)) !important;
-  background: hsl(var(--p)) !important;
-  color: hsl(var(--pc)) !important;
+  background-color: #ea580c !important;
+  background: #ea580c !important;
+  color: #ffffff !important;
   text-decoration: none;
-  border-radius: var(--radius-field);
+  border-radius: 0.25rem;
   font-size: 0.8125rem;
   font-weight: 500;
   text-align: center;
@@ -232,17 +232,17 @@ a.leaflet-popup-close-button,
 }
 
 .heatmap-popup-button:hover {
-  background-color: hsl(var(--pf)) !important;
-  color: hsl(var(--pc)) !important;
+  background-color: #c2410c !important;
+  color: #ffffff !important;
 }
 
 .heatmap-popup-button:focus {
-  outline: 2px solid hsl(var(--p));
+  outline: 2px solid #ea580c;
   outline-offset: 2px;
 }
 
 .heatmap-popup-divider {
   margin-top: 0.75rem;
-  border-top: 1px solid hsl(var(--b3)) !important;
+  border-top: 1px solid #252932 !important;
   padding-top: 0.75rem;
 }
