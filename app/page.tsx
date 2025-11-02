@@ -1,65 +1,82 @@
-import Image from "next/image";
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 export default function Home() {
+  const router = useRouter()
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  useEffect(() => {
+    // Check both localStorage and sessionStorage for token
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+    setIsLoggedIn(!!token)
+  }, [])
+
+  function handleLoginClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault()
+    if (isLoggedIn) {
+      router.push('/employees')
+    } else {
+      router.push('/auth/login')
+    }
+  }
+
+  function handleViewDataClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault()
+    if (!isLoggedIn) {
+      router.push('/auth/login')
+    } else {
+      router.push('/employees')
+    }
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <section className="hero min-h-[calc(100dvh-4rem)] bg-gradient-to-b from-base-100 to-base-200">
+      <div className="hero-content text-center md:text-left flex-col md:flex-row gap-10">
+        <div className="w-full md:w-1/2">
+          <h1 className="text-5xl md:text-6xl font-extrabold leading-tight">
+            Portal Pegawai Internal
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-4 text-base-content/80">
+            Platform manajemen data pegawai ASN terpercaya.
           </p>
+          <div className="mt-8 flex flex-col sm:flex-row gap-3">
+            <a href="#" onClick={handleLoginClick} className="btn btn-primary btn-lg shadow-xl shadow-primary/30">Login</a>
+            <a href="#" onClick={handleViewDataClick} className="btn btn-ghost btn-lg shadow-md">Lihat Data</a>
+          </div>
+          <div className="mt-10 grid grid-cols-3 gap-4 max-w-md">
+            <div className="stat bg-base-200 rounded-box p-4">
+              <div className="stat-title">Akses</div>
+              <div className="stat-value text-primary text-2xl">24/7</div>
+              <div className="stat-desc">Tersedia kapan saja</div>
+            </div>
+            <div className="stat bg-base-200 rounded-box p-4">
+              <div className="stat-title">Kecepatan</div>
+              <div className="stat-value text-2xl">Instan</div>
+              <div className="stat-desc">Cari &amp; navigasi mudah</div>
+            </div>
+            <div className="stat bg-base-200 rounded-box p-4">
+              <div className="stat-title">Keamanan</div>
+              <div className="stat-value text-2xl">Aman</div>
+              <div className="stat-desc">Proteksi data sensitif</div>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="w-full md:w-1/2">
+          <div className="mockup-browser border bg-base-300/30">
+            <div className="mockup-browser-toolbar">
+              <div className="input">/employees?search=andi</div>
+            </div>
+            <div className="bg-base-100 p-6">
+              <div className="skeleton h-6 w-1/2 mb-3"></div>
+              <div className="skeleton h-4 w-full mb-2"></div>
+              <div className="skeleton h-4 w-5/6 mb-2"></div>
+              <div className="skeleton h-4 w-2/3"></div>
+            </div>
+          </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </section>
   );
 }
