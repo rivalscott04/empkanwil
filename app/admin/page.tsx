@@ -70,19 +70,56 @@ export default function AdminPage() {
 
     async function submitForm() {
         try {
-            const payload: any = { ...form }
+            // Validation
+            if (!form.name.trim()) {
+                toast('Nama wajib diisi', 'error')
+                return
+            }
+            if (!form.email.trim()) {
+                toast('Email wajib diisi', 'error')
+                return
+            }
+            if (!form.role_id) {
+                toast('Role wajib dipilih', 'error')
+                return
+            }
+            
+            // Password validation
+            if (!editing && (!form.password || form.password.length < 6)) {
+                toast('Password wajib diisi minimal 6 karakter', 'error')
+                return
+            }
+            if (editing && form.password && form.password.length < 6) {
+                toast('Password minimal 6 karakter', 'error')
+                return
+            }
+
+            const payload: any = { 
+                name: form.name.trim(),
+                email: form.email.trim(),
+                role_id: form.role_id
+            }
+            
             if (editing) {
-                if (!payload.password) delete payload.password
+                // Only include password if it's provided (not empty)
+                if (form.password && form.password.trim()) {
+                    payload.password = form.password
+                }
                 await apiFetch(`/users/${editing.id}`, { method: 'PUT', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } })
                 toast('User berhasil diupdate', 'success')
             } else {
+                // Create: password is required
+                payload.password = form.password
                 await apiFetch(`/users`, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } })
                 toast('User berhasil dibuat', 'success')
             }
             ;(document.getElementById('user_modal') as HTMLDialogElement)?.close()
+            // Reset form
+            setForm({ name: '', email: '', password: '', role_id: '' })
             await fetchUsers(page)
         } catch (e: any) {
-            toast(e?.message || 'Gagal menyimpan user', 'error')
+            const errorMsg = e?.message || 'Gagal menyimpan user'
+            toast(errorMsg, 'error')
         }
     }
 
@@ -171,8 +208,17 @@ export default function AdminPage() {
                             <input type="email" value={form.email} onChange={(e)=>setForm(v=>({...v,email:e.target.value}))} />
                         </label>
                         <label className="input">
-                            <span className="label">Password {editing && <span className="opacity-60">(biarkan kosong jika tidak diubah)</span>}</span>
-                            <input type="password" value={form.password} onChange={(e)=>setForm(v=>({...v,password:e.target.value}))} />
+                            <span className="label">
+                                Password {editing && <span className="opacity-60">(biarkan kosong jika tidak diubah)</span>}
+                                {!editing && <span className="opacity-60">(minimal 6 karakter)</span>}
+                            </span>
+                            <input 
+                                type="password" 
+                                value={form.password} 
+                                onChange={(e)=>setForm(v=>({...v,password:e.target.value}))}
+                                placeholder={editing ? "Biarkan kosong untuk tidak mengubah" : "Minimal 6 karakter"}
+                                required={!editing}
+                            />
                         </label>
                         <label className="input">
                             <span className="label">Role</span>
