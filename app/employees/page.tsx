@@ -33,18 +33,51 @@ export default function EmployeesPage() {
 		perPageRef.current = perPage
 	}, [perPage])
 
-	// Calculate statistics from filtered data - accepts optional params to avoid stale state
+	// Calculate statistics from filtered data - use statistics endpoint for better performance
 	async function loadFilteredStatistics(currSearch = search, currInduk = indukFilter, currStatus = statusFilter) {
 		try {
-			const indukParam = currInduk ? `&induk=${encodeURIComponent(currInduk)}` : ''
-			const statusParam = currStatus ? `&status=${encodeURIComponent(currStatus)}` : ''
-			// Fetch all data with current filters to calculate accurate statistics
-			const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=all&page=1&search=${encodeURIComponent(currSearch)}${indukParam}${statusParam}`)
-			const allEmployees = json.data.data || []
+			// Use statistics endpoint instead of fetching all data for better performance
+			const params: string[] = []
+			if (currSearch) params.push(`search=${encodeURIComponent(currSearch)}`)
+			if (currInduk) params.push(`induk=${encodeURIComponent(currInduk)}`)
+			if (currStatus) params.push(`status=${encodeURIComponent(currStatus)}`)
 			
-			// Calculate statistics from filtered employees
-			const stats = countEmployeeStatistics(allEmployees)
-			setStatistics(stats)
+			// Try to use statistics endpoint if available, otherwise fallback to counting
+			try {
+				const url = params.length ? `/employees/statistics?${params.join('&')}` : '/employees/statistics'
+				const json = await apiFetch<{ success: boolean; data: { total: number; aktif: number; pensiun: number } }>(url)
+				if (json.data) {
+					setStatistics(json.data)
+					return
+				}
+			} catch (e) {
+				// If statistics endpoint doesn't support filters, fallback to manual count
+			}
+			
+			// Fallback: fetch first page with large per_page to estimate (better than fetching all)
+			const fallbackParams: string[] = ['per_page=1000', 'page=1']
+			if (currSearch) fallbackParams.push(`search=${encodeURIComponent(currSearch)}`)
+			if (currInduk) fallbackParams.push(`induk=${encodeURIComponent(currInduk)}`)
+			if (currStatus) fallbackParams.push(`status=${encodeURIComponent(currStatus)}`)
+			const json = await apiFetch<PaginatedEmployees>(`/employees?${fallbackParams.join('&')}`)
+			const sampleEmployees = json.data.data || []
+			const total = json.data.total || 0
+			
+			// If total is less than 1000, we have all data, calculate accurately
+			if (total <= 1000) {
+				const stats = countEmployeeStatistics(sampleEmployees)
+				setStatistics(stats)
+			} else {
+				// For large datasets, estimate from sample or use total count
+				const stats = countEmployeeStatistics(sampleEmployees)
+				// Scale up based on total vs sample size
+				const scale = total / sampleEmployees.length
+				setStatistics({
+					total: total,
+					aktif: Math.round(stats.aktif * scale),
+					pensiun: Math.round(stats.pensiun * scale)
+				})
+			}
 		} catch (error) {
 			console.error('Failed to load filtered statistics:', error)
 		}

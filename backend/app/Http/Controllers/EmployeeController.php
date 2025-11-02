@@ -88,11 +88,18 @@ class EmployeeController extends Controller
 			$totalCount = $filtered->count();
 			// If per_page is "all" (100000), return all items without pagination
 			$items = $perPage >= 100000 ? $filtered->values() : $filtered->slice(($pageNum - 1) * $perPage, $perPage)->values();
-			// append computed field
+			// append computed field and sort by induk_unit (Kanwil first)
             $items->transform(function ($e) {
                 $e->induk_unit = $this->computeIndukUnit($e->SATUAN_KERJA, $e->kab_kota, $e->KET_JABATAN ?? null);
 				return $e;
-			});
+			})->sortBy(function ($e) {
+				// Sort: Kanwil first, then alphabetically by induk_unit, then by NAMA_LENGKAP
+				$induk = $e->induk_unit ?? '';
+				if ($induk === 'Kanwil') {
+					return '0_' . strtolower($e->NAMA_LENGKAP ?? '');
+				}
+				return '1_' . strtolower($induk) . '_' . strtolower($e->NAMA_LENGKAP ?? '');
+			})->values();
 			return response()->json([
 				'success' => true,
 				'data' => [
@@ -116,11 +123,18 @@ class EmployeeController extends Controller
 		$all = $query->get();
 		$totalCount = $all->count();
 		
-		// append computed field: induk_unit
+		// append computed field: induk_unit and sort by induk_unit (Kanwil first)
 		$all->transform(function ($e) {
 			$e->induk_unit = $this->computeIndukUnit($e->SATUAN_KERJA, $e->kab_kota, $e->KET_JABATAN ?? null);
 			return $e;
-		});
+		})->sortBy(function ($e) {
+			// Sort: Kanwil first, then alphabetically by induk_unit, then by NAMA_LENGKAP
+			$induk = $e->induk_unit ?? '';
+			if ($induk === 'Kanwil') {
+				return '0_' . strtolower($e->NAMA_LENGKAP ?? '');
+			}
+			return '1_' . strtolower($induk) . '_' . strtolower($e->NAMA_LENGKAP ?? '');
+		})->values();
 		
 		return response()->json([
 			'success' => true,
@@ -138,11 +152,18 @@ class EmployeeController extends Controller
 	
 	$paginated = $query->paginate($perPage);
 
-	// append computed field: induk_unit
+	// append computed field: induk_unit and sort by induk_unit (Kanwil first)
     $paginated->getCollection()->transform(function ($e) {
         $e->induk_unit = $this->computeIndukUnit($e->SATUAN_KERJA, $e->kab_kota, $e->KET_JABATAN ?? null);
 		return $e;
-	});
+	})->sortBy(function ($e) {
+		// Sort: Kanwil first, then alphabetically by induk_unit, then by NAMA_LENGKAP
+		$induk = $e->induk_unit ?? '';
+		if ($induk === 'Kanwil') {
+			return '0_' . strtolower($e->NAMA_LENGKAP ?? '');
+		}
+		return '1_' . strtolower($induk) . '_' . strtolower($e->NAMA_LENGKAP ?? '');
+	})->values();
 
 	return response()->json([
 		'success' => true,
