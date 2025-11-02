@@ -16,10 +16,10 @@ class AuthController extends Controller
 			'password' => ['required'],
 		]);
 
-		// Try to find user by email or username (name)
+		// Try to find user by email or username (name) - case insensitive
 		$user = User::with('role')->where(function($query) use ($credentials) {
 			$query->where('email', $credentials['identifier'])
-				->orWhere('name', $credentials['identifier']);
+				->orWhereRaw('LOWER(name) = ?', [strtolower($credentials['identifier'])]);
 		})->first();
 
 		if (!$user || !Hash::check($credentials['password'], $user->password)) {
