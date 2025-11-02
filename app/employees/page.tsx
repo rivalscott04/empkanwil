@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import type { Employee, PaginatedEmployees } from '@/lib/types'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, getRole } from '@/lib/api'
 import { info } from '@/components/Info'
 import { countEmployeeStatistics } from '@/lib/utils'
 
@@ -111,7 +111,7 @@ export default function EmployeesPage() {
 	}
 
 	useEffect(() => {
-		const r = localStorage.getItem('role') || ''
+		const r = getRole()
 		setRole(r)
 		load(1, '', 10) 
 		loadFilteredStatistics()

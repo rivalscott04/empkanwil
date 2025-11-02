@@ -85,21 +85,23 @@ class EmployeeController extends Controller
 					}
 				})->values();
 			}
-			$totalCount = $filtered->count();
-			// If per_page is "all" (100000), return all items without pagination
-			$items = $perPage >= 100000 ? $filtered->values() : $filtered->slice(($pageNum - 1) * $perPage, $perPage)->values();
-			// append computed field and sort by induk_unit (Kanwil first)
-            $items->transform(function ($e) {
-                $e->induk_unit = $this->computeIndukUnit($e->SATUAN_KERJA, $e->kab_kota, $e->KET_JABATAN ?? null);
+			// Sort ALL filtered data first (before pagination) by induk_unit (Kanwil first)
+			$kanwilName = 'Kantor Wilayah Kementerian Agama Provinsi Nusa Tenggara Barat';
+			$filtered->transform(function ($e) {
+				$e->induk_unit = $this->computeIndukUnit($e->SATUAN_KERJA, $e->kab_kota, $e->KET_JABATAN ?? null);
 				return $e;
-			})->sortBy(function ($e) {
+			})->sortBy(function ($e) use ($kanwilName) {
 				// Sort: Kanwil first, then alphabetically by induk_unit, then by NAMA_LENGKAP
 				$induk = $e->induk_unit ?? '';
-				if ($induk === 'Kanwil') {
+				if ($induk === $kanwilName) {
 					return '0_' . strtolower($e->NAMA_LENGKAP ?? '');
 				}
 				return '1_' . strtolower($induk) . '_' . strtolower($e->NAMA_LENGKAP ?? '');
 			})->values();
+			
+			$totalCount = $filtered->count();
+			// If per_page is "all" (100000), return all items without pagination
+			$items = $perPage >= 100000 ? $filtered->values() : $filtered->slice(($pageNum - 1) * $perPage, $perPage)->values();
 			return response()->json([
 				'success' => true,
 				'data' => [
@@ -124,13 +126,14 @@ class EmployeeController extends Controller
 		$totalCount = $all->count();
 		
 		// append computed field: induk_unit and sort by induk_unit (Kanwil first)
+		$kanwilName = 'Kantor Wilayah Kementerian Agama Provinsi Nusa Tenggara Barat';
 		$all->transform(function ($e) {
 			$e->induk_unit = $this->computeIndukUnit($e->SATUAN_KERJA, $e->kab_kota, $e->KET_JABATAN ?? null);
 			return $e;
-		})->sortBy(function ($e) {
+		})->sortBy(function ($e) use ($kanwilName) {
 			// Sort: Kanwil first, then alphabetically by induk_unit, then by NAMA_LENGKAP
 			$induk = $e->induk_unit ?? '';
-			if ($induk === 'Kanwil') {
+			if ($induk === $kanwilName) {
 				return '0_' . strtolower($e->NAMA_LENGKAP ?? '');
 			}
 			return '1_' . strtolower($induk) . '_' . strtolower($e->NAMA_LENGKAP ?? '');
@@ -150,24 +153,41 @@ class EmployeeController extends Controller
 		]);
 	}
 	
-	$paginated = $query->paginate($perPage);
-
-	// append computed field: induk_unit and sort by induk_unit (Kanwil first)
-    $paginated->getCollection()->transform(function ($e) {
-        $e->induk_unit = $this->computeIndukUnit($e->SATUAN_KERJA, $e->kab_kota, $e->KET_JABATAN ?? null);
+	// Get all data first, compute induk_unit, sort, then paginate manually
+	$all = $query->get();
+	
+	// Compute induk_unit for all records
+	$all->transform(function ($e) {
+		$e->induk_unit = $this->computeIndukUnit($e->SATUAN_KERJA, $e->kab_kota, $e->KET_JABATAN ?? null);
 		return $e;
-	})->sortBy(function ($e) {
-		// Sort: Kanwil first, then alphabetically by induk_unit, then by NAMA_LENGKAP
+	});
+	
+	// Sort: Kanwil (Kantor Wilayah) first, then alphabetically by induk_unit, then by NAMA_LENGKAP
+	$kanwilName = 'Kantor Wilayah Kementerian Agama Provinsi Nusa Tenggara Barat';
+	$sorted = $all->sortBy(function ($e) use ($kanwilName) {
 		$induk = $e->induk_unit ?? '';
-		if ($induk === 'Kanwil') {
+		if ($induk === $kanwilName) {
 			return '0_' . strtolower($e->NAMA_LENGKAP ?? '');
 		}
 		return '1_' . strtolower($induk) . '_' . strtolower($e->NAMA_LENGKAP ?? '');
 	})->values();
-
+	
+	// Manual pagination after sorting
+	$pageNum = max(1, (int) $request->query('page', 1));
+	$totalCount = $sorted->count();
+	$paginatedData = $sorted->slice(($pageNum - 1) * $perPage, $perPage)->values();
+	
 	return response()->json([
 		'success' => true,
-		'data' => $paginated,
+		'data' => [
+			'data' => $paginatedData,
+			'total' => $totalCount,
+			'per_page' => $perPage,
+			'current_page' => $pageNum,
+			'last_page' => (int) ceil($totalCount / $perPage),
+			'from' => $totalCount > 0 ? (($pageNum - 1) * $perPage) + 1 : 0,
+			'to' => min($pageNum * $perPage, $totalCount),
+		],
 	]);
 	}
 

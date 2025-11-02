@@ -4,6 +4,12 @@ function getToken(): string | null {
 	return localStorage.getItem('token') || sessionStorage.getItem('token')
 }
 
+// Helper to get role from either localStorage or sessionStorage
+export function getRole(): string {
+	if (typeof window === 'undefined') return ''
+	return localStorage.getItem('role') || sessionStorage.getItem('role') || ''
+}
+
 // Helper to clear auth data from both storages
 function clearAuthData() {
 	if (typeof window === 'undefined') return

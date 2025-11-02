@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Employee } from "@/lib/types";
 import { useParams, useRouter } from "next/navigation";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getRole } from "@/lib/api";
 import { formatDateForInput } from "@/lib/utils";
 
 // Operator cannot edit these fields
@@ -20,12 +20,13 @@ export default function EmployeeEditPage() {
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    if (typeof window === 'undefined') return
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     if (!token) {
       router.replace("/auth/login");
       return;
     }
-    setRole(localStorage.getItem("role") || "");
+    setRole(getRole());
 
     async function load() {
       try {
