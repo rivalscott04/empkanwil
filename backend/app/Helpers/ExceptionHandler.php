@@ -22,6 +22,15 @@ function handleApiException(Request $request, Throwable $exception): JsonRespons
         $statusCode = 422;
         $message = 'Validation error';
         $errors = $exception->errors();
+        
+        // Always return validation errors for auth endpoints (login, register, etc)
+        // so users know what went wrong
+        $isAuthEndpoint = $request->is('api/auth/*');
+        
+        // In production, only hide validation errors for non-auth endpoints
+        if (app()->environment('production') && !$isAuthEndpoint) {
+            $errors = null; // Don't expose validation errors details in production for non-auth endpoints
+        }
     }
     // Handle HTTP exceptions
     elseif ($exception instanceof HttpException) {
@@ -29,10 +38,9 @@ function handleApiException(Request $request, Throwable $exception): JsonRespons
         $message = $exception->getMessage() ?: 'An error occurred';
     }
 
-    // In production, don't expose detailed errors
-    if (app()->environment('production')) {
+    // In production, don't expose detailed errors (but validation errors for auth are handled above)
+    if (app()->environment('production') && !($exception instanceof ValidationException)) {
         $message = getSafeErrorMessage($statusCode);
-        $errors = null; // Don't expose validation errors details in production
     }
 
     return response()->json([
