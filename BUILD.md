@@ -1,5 +1,17 @@
 # Build Instructions
 
+## ⚠️ PENTING: Frontend-Only Deployment
+
+**Project ini adalah Frontend-Only:**
+- **Frontend:** Next.js (ini yang di-deploy)
+- **Backend:** Laravel (terpisah, di folder `backend/`, harus sudah running di server lain atau domain lain)
+
+**Konsep Deployment:**
+- Next.js **hanya frontend** yang akan call API ke backend Laravel
+- Backend Laravel **TIDAK** ikut di-deploy bersama frontend
+- Frontend memanggil API backend via `NEXT_PUBLIC_API_URL`
+- Pastikan backend Laravel **sudah running** dan **accessible** sebelum build frontend
+
 ## Console Log Removal
 
 Build production Next.js **otomatis menghapus semua console.log** dari code production. Konfigurasi sudah ditambahkan di `next.config.ts`:
@@ -10,6 +22,8 @@ Build production Next.js **otomatis menghapus semua console.log** dari code prod
 
 ### Development (Lokal)
 Default API URL sudah di-set ke `http://127.0.0.1:8000/api` di `next.config.ts`.
+
+**Catatan:** Pastikan backend Laravel sudah running di port 8000 sebelum development.
 
 ### Production Build
 
@@ -73,7 +87,7 @@ Internet
    ↓
 Nginx (port 80/443)
    ↓
-Next.js Frontend (localhost:3000)
+Next.js Frontend (localhost:3800)
 ```
 
 **Cara Deploy:**
@@ -85,14 +99,17 @@ Next.js Frontend (localhost:3000)
    ```
 3. **Set environment variable** dan **build:**
    ```bash
-   # PASTIKAN API URL SESUAI DENGAN BACKEND YANG AKAN DITARUH DI VPS!
+   # PASTIKAN BACKEND LARAVEL SUDAH RUNNING DAN ACCESSIBLE!
+   # Ganti dengan URL backend Laravel yang sudah di-deploy
    export NEXT_PUBLIC_API_URL=https://api.your-domain.com/api
-   # atau jika backend di domain sama tapi beda subdomain:
+   # atau jika backend di domain sama tapi beda path:
    # export NEXT_PUBLIC_API_URL=https://your-domain.com/api
    npm run build:prod
    ```
    
-   **PENTING:** Environment variable ini **harus di-set sebelum build** karena Next.js embed ke bundle saat build time. Setelah build, tidak bisa diubah tanpa rebuild.
+   **PENTING:** 
+   - Environment variable ini **harus di-set sebelum build** karena Next.js embed ke bundle saat build time. Setelah build, tidak bisa diubah tanpa rebuild.
+   - **Pastikan backend Laravel sudah running** dan URL API sudah benar sebelum build!
 4. **Start production server:**
    ```bash
    npm start
@@ -141,7 +158,7 @@ Next.js Frontend (localhost:3000)
    [Service]
    Type=simple
    User=www-data
-   WorkingDirectory=/var/www/newemp
+   WorkingDirectory=/var/www/empkanwil
    ExecStart=/usr/bin/npm start
    Restart=always
    RestartSec=10
@@ -163,17 +180,17 @@ Next.js Frontend (localhost:3000)
    - WorkingDirectory harus di root project (bukan di folder `dist` atau `build`)
 6. **Setup Nginx reverse proxy** (penting untuk HTTPS):
    
-   **Next.js berbeda dengan static HTML!** Nginx tidak pointing ke folder, tapi ke **process Node.js** yang berjalan di port 3000.
+   **Next.js berbeda dengan static HTML!** Nginx tidak pointing ke folder, tapi ke **process Node.js** yang berjalan di port 3800.
    
    Buat file `/etc/nginx/sites-available/newemp`:
    ```nginx
    server {
        listen 80;
-       server_name your-domain.com;
+       sdm.rivaldev.site;
        
-       # Proxy all requests ke Next.js process di localhost:3000
+       # Proxy all requests ke Next.js process di localhost:3800
        location / {
-           proxy_pass http://localhost:3000;
+           proxy_pass http://localhost:3800;
            proxy_http_version 1.1;
            proxy_set_header Upgrade $http_upgrade;
            proxy_set_header Connection 'upgrade';
@@ -186,7 +203,7 @@ Next.js Frontend (localhost:3000)
        
        # Optional: serve static files directly dari .next/static untuk performance
        location /_next/static {
-           alias /path/to/your/project/.next/static;
+           alias /var/www/empkanwil/.next/static;
            add_header Cache-Control "public, max-age=31536000, immutable";
        }
    }
@@ -207,18 +224,20 @@ Next.js Frontend (localhost:3000)
 |-------|----------------|---------|
 | Build output | `dist/` folder | `.next/` folder |
 | Server | Web server (Nginx/Apache) | Node.js process |
-| Nginx pointing | `root /var/www/html/dist;` | `proxy_pass http://localhost:3000;` |
+| Nginx pointing | `root /var/www/html/dist;` | `proxy_pass http://localhost:3800;` |
 | Cara jalankan | Web server auto serve | Harus run `npm start` |
 | Type | Static files | Dynamic app |
 
 ### Poin Penting:
 
+- **Frontend-Only:** Next.js ini hanya frontend, backend Laravel terpisah
 - Next.js tidak punya folder `dist/` seperti JS biasa
 - Build output ada di `.next/` yang sudah di-generate setelah `npm run build`
-- Nginx **TIDAK** pointing ke folder, tapi **proxy ke process Node.js** di port 3000
+- Nginx **TIDAK** pointing ke folder, tapi **proxy ke process Node.js** di port 3800
 - Next.js adalah **Node.js application** yang harus **running** (dengan PM2 atau systemd)
 - `NEXT_PUBLIC_API_URL` harus di-set **sebelum** build karena Next.js embed environment variables ke bundle saat build time
 - Setelah build, tidak bisa mengubah API URL tanpa rebuild
-- Pastikan URL API sudah benar sebelum build production
+- **Pastikan backend Laravel sudah running dan accessible** sebelum build production
+- **Pastikan URL API sudah benar** sebelum build production
 - Wajib setup PM2 atau systemd service agar Next.js auto-restart kalau crash
 
