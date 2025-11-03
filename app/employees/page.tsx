@@ -541,7 +541,7 @@ export default function EmployeesPage() {
 									)}
                                             <button
                                                 onClick={async ()=>{ try { await navigator.clipboard?.writeText?.(e.NIP_BARU||''); info('NIP berhasil disalin'); } catch {} }}
-												className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100"
+                                                className="btn btn-ghost btn-xs opacity-60 hover:opacity-100 focus:opacity-100"
 												title="Salin NIP"
 												aria-label="Salin NIP"
 											>
@@ -559,7 +559,7 @@ export default function EmployeesPage() {
 									)}
                                             <button
                                                 onClick={async ()=>{ try { await navigator.clipboard?.writeText?.(e.NAMA_LENGKAP||''); info('Nama berhasil disalin'); } catch {} }}
-												className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100"
+                                                className="btn btn-ghost btn-xs opacity-60 hover:opacity-100 focus:opacity-100"
 												title="Salin Nama"
 												aria-label="Salin Nama"
 											>
