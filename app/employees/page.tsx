@@ -49,11 +49,21 @@ export default function EmployeesPage() {
 		perPageRef.current = perPage
 	}, [perPage])
 
-	// Calculate statistics with filters: query exact totals from filtered endpoints
+    // Calculate statistics with filters: query exact totals from filtered endpoints
 	async function loadFilteredStatistics(currSearch = search, currInduk = indukFilter, currStatus = statusFilter) {
 		try {
+            // If no filters, use backend statistics endpoint (fast and accurate)
+            if (!currSearch && !currInduk && !currStatus) {
+                try {
+                    const json = await apiFetch<{ success: boolean; data: { total: number; aktif: number; pensiun: number } }>(`/employees/statistics`)
+                    if (json?.data) {
+                        setStatistics(json.data)
+                        return
+                    }
+                } catch {}
+            }
 			const baseQuery = (statusOverride?: 'aktif' | 'pensiun') => {
-				const params: string[] = ['per_page=1', 'page=1']
+                const params: string[] = ['per_page=10', 'page=1']
 				if (currSearch) params.push(`search=${encodeURIComponent(currSearch)}`)
 				if (currInduk) params.push(`induk=${encodeURIComponent(currInduk)}`)
 				const statusParam = statusOverride !== undefined ? statusOverride : (currStatus || '')
@@ -61,7 +71,7 @@ export default function EmployeesPage() {
 				return `/employees?${params.join('&')}`
 			}
 			// total with current filters
-			const totalRes = await apiFetch<PaginatedEmployees>(baseQuery())
+            const totalRes = await apiFetch<PaginatedEmployees>(baseQuery())
 			const filteredTotal = Number(totalRes?.data?.total ?? 0)
 			// counts by status (if a status filter is already applied, shortcut)
 			let aktifCount = 0
