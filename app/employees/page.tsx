@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import * as XLSX from 'xlsx'
 import type { Employee, PaginatedEmployees } from '@/lib/types'
 import { apiFetch, getRole } from '@/lib/api'
 import { info } from '@/components/Info'
@@ -283,7 +284,7 @@ export default function EmployeesPage() {
 			for (const r of rows) {
 				const clean = (v: string | null | undefined) => (v ?? '').replace(/[\r\n]+/g, ' ').trim()
 				csvLines.push([
-					r.NIP_BARU,
+					JSON.stringify("'" + (r.NIP_BARU || '')),
 					JSON.stringify(clean(r.NAMA_LENGKAP)),
 					JSON.stringify(clean(r.SATUAN_KERJA)),
 					JSON.stringify(clean(r.induk_unit)),
@@ -334,13 +335,33 @@ export default function EmployeesPage() {
 				const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPage}&page=${page}&search=${encodeURIComponent(search)}${indukParam}${statusParam}`)
 				rows = json.data.data || []
 			}
-			// Create a minimal HTML table that Excel can open as a spreadsheet
-			const esc = (s: string | null | undefined) => (s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-			const rowsHtml = rows.map(r => (
-				`<tr><td>${esc(r.NIP_BARU)}</td><td>${esc(r.NAMA_LENGKAP)}</td><td>${esc(r.SATUAN_KERJA)}</td><td>${esc(r.induk_unit)}</td><td>${esc(r.KET_JABATAN)}</td><td>${esc(r.pangkat_asn)}</td><td>${esc(r.GOL_RUANG)}</td></tr>`
-			)).join('')
-			const html = `<!DOCTYPE html><html><head><meta charset="utf-8" /></head><body><table><thead><tr><th>NIP</th><th>Nama</th><th>Unit Kerja</th><th>Induk</th><th>Jabatan</th><th>Pangkat</th><th>Golongan</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`
-			const blob = new Blob([html], { type: 'application/vnd.ms-excel' })
+			// Build a real XLSX workbook (no more Excel warnings)
+			const header = ['NIP','Nama','Unit Kerja','Induk','Jabatan','Pangkat','Golongan']
+			const data = rows.map(r => [
+				// Keep NIP as text
+				r.NIP_BARU ?? '',
+				r.NAMA_LENGKAP ?? '',
+				r.SATUAN_KERJA ?? '',
+				r.induk_unit ?? '',
+				r.KET_JABATAN ?? '',
+				r.pangkat_asn ?? '',
+				r.GOL_RUANG ?? '',
+			])
+			const worksheet = XLSX.utils.aoa_to_sheet([header, ...data])
+			// Ensure first column (A) is treated as text by Excel
+			const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1')
+			for (let row = range.s.r + 1; row <= range.e.r; row++) { // skip header row
+				const cellRef = XLSX.utils.encode_cell({ r: row, c: 0 })
+				const cell = worksheet[cellRef]
+				if (cell) {
+					cell.t = 's' // force string
+					;(cell as any).z = '@' // text format
+				}
+			}
+			const workbook = XLSX.utils.book_new()
+			XLSX.utils.book_append_sheet(workbook, worksheet, 'Pegawai')
+			const wbArray = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+			const blob = new Blob([wbArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
 			const url = URL.createObjectURL(blob)
 			const a = document.createElement('a')
 			a.href = url
