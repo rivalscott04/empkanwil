@@ -33,34 +33,40 @@ export default function EmployeesPage() {
 	const perPageRef = useRef(perPage)
 	const pages = useMemo(() => Math.max(1, Math.ceil(total / perPage)), [total, perPage])
 	const visibleCount = useMemo(() => Object.values(cols).filter(Boolean).length, [cols])
+	const isRetired = (tmtPensiun?: string | null) => {
+		if (!tmtPensiun) return false
+		const d = new Date(tmtPensiun)
+		if (Number.isNaN(d.getTime())) return false
+		const today = new Date()
+		// compare by day
+		today.setHours(0,0,0,0)
+		d.setHours(0,0,0,0)
+		return d.getTime() <= today.getTime()
+	}
 	
 	// Keep perPageRef in sync with perPage
 	useEffect(() => {
 		perPageRef.current = perPage
 	}, [perPage])
 
-	// Calculate statistics from filtered data - use statistics endpoint for better performance
+	// Calculate statistics with filters: use backend endpoint only for unfiltered, otherwise compute from filtered list
 	async function loadFilteredStatistics(currSearch = search, currInduk = indukFilter, currStatus = statusFilter) {
 		try {
-			// Use statistics endpoint instead of fetching all data for better performance
-			const params: string[] = []
-			if (currSearch) params.push(`search=${encodeURIComponent(currSearch)}`)
-			if (currInduk) params.push(`induk=${encodeURIComponent(currInduk)}`)
-			if (currStatus) params.push(`status=${encodeURIComponent(currStatus)}`)
-			
-			// Try to use statistics endpoint if available, otherwise fallback to counting
-			try {
-				const url = params.length ? `/employees/statistics?${params.join('&')}` : '/employees/statistics'
-				const json = await apiFetch<{ success: boolean; data: { total: number; aktif: number; pensiun: number } }>(url)
-				if (json.data) {
-					setStatistics(json.data)
-					return
+			const hasAnyFilter = Boolean(currSearch || currInduk || currStatus)
+			// Only use backend statistics endpoint when no filters applied
+			if (!hasAnyFilter) {
+				try {
+					const json = await apiFetch<{ success: boolean; data: { total: number; aktif: number; pensiun: number } }>(`/employees/statistics`)
+					if (json.data) {
+						setStatistics(json.data)
+						return
+					}
+				} catch (e) {
+					// ignore and fallback to manual
 				}
-			} catch (e) {
-				// If statistics endpoint doesn't support filters, fallback to manual count
 			}
 			
-			// Fallback: fetch first page with large per_page to estimate (better than fetching all)
+			// Manual/filtered: fetch first page with large per_page to estimate (better than fetching all)
 			const fallbackParams: string[] = ['per_page=1000', 'page=1']
 			if (currSearch) fallbackParams.push(`search=${encodeURIComponent(currSearch)}`)
 			if (currInduk) fallbackParams.push(`induk=${encodeURIComponent(currInduk)}`)
@@ -529,8 +535,11 @@ export default function EmployeesPage() {
 							<tr key={e.NIP_BARU}>
 								{cols.nip && (
 									<td className="group">
-										<div className="flex items-center gap-2">
-											<span>{e.NIP_BARU}</span>
+								<div className="flex items-center gap-2">
+									<span>{e.NIP_BARU}</span>
+									{isRetired(e.TMT_PENSIUN) && (
+										<span className="badge badge-error badge-soft badge-xs">Pensiun</span>
+									)}
                                             <button
                                                 onClick={async ()=>{ try { await navigator.clipboard?.writeText?.(e.NIP_BARU||''); info('NIP berhasil disalin'); } catch {} }}
 												className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100"
@@ -544,8 +553,11 @@ export default function EmployeesPage() {
 								)}
 							{cols.nama && (
 								<td className="font-medium group">
-									<div className="flex items-center gap-2">
-										<button className="text-primary hover:opacity-90 text-left" onClick={()=>{ setSelected(e); (document.getElementById('employee_modal') as HTMLDialogElement)?.showModal() }}>{e.NAMA_LENGKAP}</button>
+								<div className="flex items-center gap-2">
+									<button className="text-primary hover:opacity-90 text-left" onClick={()=>{ setSelected(e); (document.getElementById('employee_modal') as HTMLDialogElement)?.showModal() }}>{e.NAMA_LENGKAP}</button>
+									{isRetired(e.TMT_PENSIUN) && (
+										<span className="badge badge-error badge-soft badge-xs">Pensiun</span>
+									)}
                                             <button
                                                 onClick={async ()=>{ try { await navigator.clipboard?.writeText?.(e.NAMA_LENGKAP||''); info('Nama berhasil disalin'); } catch {} }}
 												className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100"
@@ -601,8 +613,11 @@ export default function EmployeesPage() {
 										{/* NIP - Always visible */}
 										<div>
 											<div className="text-xs opacity-70">NIP</div>
-											<div className="flex items-center gap-2 font-mono text-sm">
-												<span className="break-all">{e.NIP_BARU}</span>
+									<div className="flex items-center gap-2 font-mono text-sm">
+										<span className="break-all">{e.NIP_BARU}</span>
+										{isRetired(e.TMT_PENSIUN) && (
+											<span className="badge badge-error badge-soft badge-xs">Pensiun</span>
+										)}
 												<button
 													className="btn btn-ghost btn-xs flex-shrink-0"
 													title="Salin NIP"
@@ -616,8 +631,11 @@ export default function EmployeesPage() {
 										{/* Nama - Always visible */}
 										<div className="mt-2">
 											<div className="text-xs opacity-70">Nama</div>
-											<div className="flex items-center gap-2">
-												<span className="font-medium break-words">{e.NAMA_LENGKAP}</span>
+									<div className="flex items-center gap-2">
+										<span className="font-medium break-words">{e.NAMA_LENGKAP}</span>
+										{isRetired(e.TMT_PENSIUN) && (
+											<span className="badge badge-error badge-soft badge-xs">Pensiun</span>
+										)}
 												<button
 													className="btn btn-ghost btn-xs flex-shrink-0"
 													title="Salin Nama"
@@ -689,8 +707,11 @@ export default function EmployeesPage() {
 					<div className="mt-4 space-y-3">
 						<div>
 							<div className="text-xs opacity-70">NIP</div>
-							<div className="flex items-center gap-2">
+								<div className="flex items-center gap-2">
 								<span className="font-mono break-all">{selected?.NIP_BARU ?? '-'}</span>
+									{isRetired(selected?.TMT_PENSIUN) && (
+										<span className="badge badge-error badge-soft badge-xs">Pensiun</span>
+									)}
 								<button 
 									className="btn btn-ghost btn-xs flex-shrink-0" 
 									title="Salin NIP"
@@ -703,8 +724,11 @@ export default function EmployeesPage() {
 						</div>
 						<div>
 							<div className="text-xs opacity-70">Nama</div>
-							<div className="flex items-center gap-2">
+								<div className="flex items-center gap-2">
 								<span className="font-medium break-words">{selected?.NAMA_LENGKAP ?? '-'}</span>
+									{isRetired(selected?.TMT_PENSIUN) && (
+										<span className="badge badge-error badge-soft badge-xs">Pensiun</span>
+									)}
 								<button 
 									className="btn btn-ghost btn-xs flex-shrink-0" 
 									title="Salin Nama"
