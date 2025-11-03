@@ -52,17 +52,17 @@ export default function EmployeesPage() {
 	// Calculate statistics with filters: query exact totals from filtered endpoints
 	async function loadFilteredStatistics(currSearch = search, currInduk = indukFilter, currStatus = statusFilter) {
 		try {
-			const baseQuery = (extra: string = '') => {
+			const baseQuery = (statusOverride?: 'aktif' | 'pensiun') => {
 				const params: string[] = ['per_page=1', 'page=1']
 				if (currSearch) params.push(`search=${encodeURIComponent(currSearch)}`)
 				if (currInduk) params.push(`induk=${encodeURIComponent(currInduk)}`)
-				if (currStatus) params.push(`status=${encodeURIComponent(currStatus)}`)
-				if (extra) params.push(extra)
+				const statusParam = statusOverride !== undefined ? statusOverride : (currStatus || '')
+				if (statusParam) params.push(`status=${encodeURIComponent(statusParam as string)}`)
 				return `/employees?${params.join('&')}`
 			}
 			// total with current filters
 			const totalRes = await apiFetch<PaginatedEmployees>(baseQuery())
-			const filteredTotal = totalRes.data.total || 0
+			const filteredTotal = Number(totalRes?.data?.total ?? 0)
 			// counts by status (if a status filter is already applied, shortcut)
 			let aktifCount = 0
 			let pensiunCount = 0
@@ -73,10 +73,10 @@ export default function EmployeesPage() {
 				aktifCount = 0
 				pensiunCount = filteredTotal
 			} else {
-				const aktifRes = await apiFetch<PaginatedEmployees>(baseQuery('status=aktif'))
-				const pensiunRes = await apiFetch<PaginatedEmployees>(baseQuery('status=pensiun'))
-				aktifCount = aktifRes.data.total || 0
-				pensiunCount = pensiunRes.data.total || 0
+				const aktifRes = await apiFetch<PaginatedEmployees>(baseQuery('aktif'))
+				const pensiunRes = await apiFetch<PaginatedEmployees>(baseQuery('pensiun'))
+				aktifCount = Number(aktifRes?.data?.total ?? 0)
+				pensiunCount = Number(pensiunRes?.data?.total ?? 0)
 			}
 			setStatistics({ total: filteredTotal, aktif: aktifCount, pensiun: pensiunCount })
 		} catch (error) {
