@@ -49,47 +49,36 @@ export default function EmployeesPage() {
 		perPageRef.current = perPage
 	}, [perPage])
 
-	// Calculate statistics with filters: use backend endpoint only for unfiltered, otherwise compute from filtered list
+	// Calculate statistics with filters: query exact totals from filtered endpoints
 	async function loadFilteredStatistics(currSearch = search, currInduk = indukFilter, currStatus = statusFilter) {
 		try {
-			const hasAnyFilter = Boolean(currSearch || currInduk || currStatus)
-			// Only use backend statistics endpoint when no filters applied
-			if (!hasAnyFilter) {
-				try {
-					const json = await apiFetch<{ success: boolean; data: { total: number; aktif: number; pensiun: number } }>(`/employees/statistics`)
-					if (json.data) {
-						setStatistics(json.data)
-						return
-					}
-				} catch (e) {
-					// ignore and fallback to manual
-				}
+			const baseQuery = (extra: string = '') => {
+				const params: string[] = ['per_page=1', 'page=1']
+				if (currSearch) params.push(`search=${encodeURIComponent(currSearch)}`)
+				if (currInduk) params.push(`induk=${encodeURIComponent(currInduk)}`)
+				if (currStatus) params.push(`status=${encodeURIComponent(currStatus)}`)
+				if (extra) params.push(extra)
+				return `/employees?${params.join('&')}`
 			}
-			
-			// Manual/filtered: fetch first page with large per_page to estimate (better than fetching all)
-			const fallbackParams: string[] = ['per_page=1000', 'page=1']
-			if (currSearch) fallbackParams.push(`search=${encodeURIComponent(currSearch)}`)
-			if (currInduk) fallbackParams.push(`induk=${encodeURIComponent(currInduk)}`)
-			if (currStatus) fallbackParams.push(`status=${encodeURIComponent(currStatus)}`)
-			const json = await apiFetch<PaginatedEmployees>(`/employees?${fallbackParams.join('&')}`)
-			const sampleEmployees = json.data.data || []
-			const total = json.data.total || 0
-			
-			// If total is less than 1000, we have all data, calculate accurately
-			if (total <= 1000) {
-				const stats = countEmployeeStatistics(sampleEmployees)
-				setStatistics(stats)
+			// total with current filters
+			const totalRes = await apiFetch<PaginatedEmployees>(baseQuery())
+			const filteredTotal = totalRes.data.total || 0
+			// counts by status (if a status filter is already applied, shortcut)
+			let aktifCount = 0
+			let pensiunCount = 0
+			if (currStatus === 'aktif') {
+				aktifCount = filteredTotal
+				pensiunCount = 0
+			} else if (currStatus === 'pensiun') {
+				aktifCount = 0
+				pensiunCount = filteredTotal
 			} else {
-				// For large datasets, estimate from sample or use total count
-				const stats = countEmployeeStatistics(sampleEmployees)
-				// Scale up based on total vs sample size
-				const scale = total / sampleEmployees.length
-				setStatistics({
-					total: total,
-					aktif: Math.round(stats.aktif * scale),
-					pensiun: Math.round(stats.pensiun * scale)
-				})
+				const aktifRes = await apiFetch<PaginatedEmployees>(baseQuery('status=aktif'))
+				const pensiunRes = await apiFetch<PaginatedEmployees>(baseQuery('status=pensiun'))
+				aktifCount = aktifRes.data.total || 0
+				pensiunCount = pensiunRes.data.total || 0
 			}
+			setStatistics({ total: filteredTotal, aktif: aktifCount, pensiun: pensiunCount })
 		} catch (error) {
 			console.error('Failed to load filtered statistics:', error)
 		}
@@ -538,7 +527,7 @@ export default function EmployeesPage() {
 								<div className="flex items-center gap-2">
 									<span>{e.NIP_BARU}</span>
 									{isRetired(e.TMT_PENSIUN) && (
-										<span className="badge badge-error badge-soft badge-xs">Pensiun</span>
+										<span className="badge badge-error badge-soft badge-xs text-white">Pensiun</span>
 									)}
                                             <button
                                                 onClick={async ()=>{ try { await navigator.clipboard?.writeText?.(e.NIP_BARU||''); info('NIP berhasil disalin'); } catch {} }}
@@ -556,7 +545,7 @@ export default function EmployeesPage() {
 								<div className="flex items-center gap-2">
 									<button className="text-primary hover:opacity-90 text-left" onClick={()=>{ setSelected(e); (document.getElementById('employee_modal') as HTMLDialogElement)?.showModal() }}>{e.NAMA_LENGKAP}</button>
 									{isRetired(e.TMT_PENSIUN) && (
-										<span className="badge badge-error badge-soft badge-xs">Pensiun</span>
+										<span className="badge badge-error badge-soft badge-xs text-white">Pensiun</span>
 									)}
                                             <button
                                                 onClick={async ()=>{ try { await navigator.clipboard?.writeText?.(e.NAMA_LENGKAP||''); info('Nama berhasil disalin'); } catch {} }}
@@ -615,8 +604,8 @@ export default function EmployeesPage() {
 											<div className="text-xs opacity-70">NIP</div>
 									<div className="flex items-center gap-2 font-mono text-sm">
 										<span className="break-all">{e.NIP_BARU}</span>
-										{isRetired(e.TMT_PENSIUN) && (
-											<span className="badge badge-error badge-soft badge-xs">Pensiun</span>
+									{isRetired(e.TMT_PENSIUN) && (
+										<span className="badge badge-error badge-soft badge-xs text-white">Pensiun</span>
 										)}
 												<button
 													className="btn btn-ghost btn-xs flex-shrink-0"
@@ -710,7 +699,7 @@ export default function EmployeesPage() {
 								<div className="flex items-center gap-2">
 								<span className="font-mono break-all">{selected?.NIP_BARU ?? '-'}</span>
 									{isRetired(selected?.TMT_PENSIUN) && (
-										<span className="badge badge-error badge-soft badge-xs">Pensiun</span>
+										<span className="badge badge-error badge-soft badge-xs text-white">Pensiun</span>
 									)}
 								<button 
 									className="btn btn-ghost btn-xs flex-shrink-0" 
@@ -727,7 +716,7 @@ export default function EmployeesPage() {
 								<div className="flex items-center gap-2">
 								<span className="font-medium break-words">{selected?.NAMA_LENGKAP ?? '-'}</span>
 									{isRetired(selected?.TMT_PENSIUN) && (
-										<span className="badge badge-error badge-soft badge-xs">Pensiun</span>
+										<span className="badge badge-error badge-soft badge-xs text-white">Pensiun</span>
 									)}
 								<button 
 									className="btn btn-ghost btn-xs flex-shrink-0" 
