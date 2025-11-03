@@ -563,10 +563,10 @@ export default function EmployeesPage() {
 						{cols.pangkat && <td>{e.pangkat_asn ?? '-'}</td>}
 								{cols.golongan && <td>{e.GOL_RUANG ?? '-'}</td>}
 								{cols.tmt_jabatan && (
-									<td className="hidden md:table-cell">{e.TMT_JABATAN ? new Date(e.TMT_JABATAN).toLocaleDateString('id-ID') : '-'}</td>
+									<td className="hidden md:table-cell">{e.TMT_JABATAN ? new Date(e.TMT_JABATAN).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</td>
 								)}
 								{cols.tmt_pensiun && (
-									<td className="hidden md:table-cell">{e.TMT_PENSIUN ? new Date(e.TMT_PENSIUN).toLocaleDateString('id-ID') : '-'}</td>
+									<td className="hidden md:table-cell">{e.TMT_PENSIUN ? new Date(e.TMT_PENSIUN).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</td>
 								)}
 								{cols.actions && (
 									<td className="text-right">
