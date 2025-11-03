@@ -15,7 +15,7 @@ export default function EmployeesPage() {
 	const [search, setSearch] = useState('')
 	const [loading, setLoading] = useState(false)
 	const [selected, setSelected] = useState<Employee | null>(null)
-	const [cols, setCols] = useState<{ nip: boolean; nama: boolean; unit: boolean; induk: boolean; jabatan: boolean; pangkat: boolean; golongan: boolean; actions: boolean }>({ nip: true, nama: true, unit: true, induk: true, jabatan: true, pangkat: true, golongan: true, actions: true })
+	const [cols, setCols] = useState<{ nip: boolean; nama: boolean; unit: boolean; induk: boolean; jabatan: boolean; pangkat: boolean; golongan: boolean; tmt_jabatan: boolean; tmt_pensiun: boolean; actions: boolean }>({ nip: true, nama: true, unit: true, induk: true, jabatan: true, pangkat: true, golongan: true, tmt_jabatan: false, tmt_pensiun: false, actions: true })
 	const [colsOpen, setColsOpen] = useState(false)
 	const colsRef = useRef<HTMLDivElement | null>(null)
 	const searchRef = useRef<HTMLInputElement | null>(null)
@@ -277,21 +277,25 @@ export default function EmployeesPage() {
 				const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPage}&page=${page}&search=${encodeURIComponent(search)}${indukParam}${statusParam}`)
 				rows = json.data.data || []
 			}
-			// build CSV with selectable separator
+			// build CSV with selectable separator and dynamic columns
 			const sep = sepType === 'semicolon' ? ';' : ','
-			const header = ['NIP','Nama','Unit Kerja','Induk','Jabatan','Pangkat','Golongan']
+			const clean = (v: string | null | undefined) => (v ?? '').replace(/[\r\n]+/g, ' ').trim()
+			const formatDate = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString('id-ID') : '')
+			const selected: { key: string; header: string; get: (row: Employee) => string }[] = []
+			if (cols.nip) selected.push({ key: 'nip', header: 'NIP', get: (row) => "'" + (row.NIP_BARU || '') })
+			if (cols.nama) selected.push({ key: 'nama', header: 'Nama', get: (row) => clean(row.NAMA_LENGKAP) })
+			if (cols.unit) selected.push({ key: 'unit', header: 'Unit Kerja', get: (row) => clean(row.SATUAN_KERJA) })
+			if (cols.induk) selected.push({ key: 'induk', header: 'Induk', get: (row) => clean(row.induk_unit) })
+			if (cols.jabatan) selected.push({ key: 'jabatan', header: 'Jabatan', get: (row) => clean(row.KET_JABATAN) })
+			if (cols.pangkat) selected.push({ key: 'pangkat', header: 'Pangkat', get: (row) => clean(row.pangkat_asn) })
+			if (cols.golongan) selected.push({ key: 'golongan', header: 'Golongan', get: (row) => clean(row.GOL_RUANG) })
+			if (cols.tmt_jabatan) selected.push({ key: 'tmt_jabatan', header: 'TMT Jabatan', get: (row) => formatDate(row.TMT_JABATAN) })
+			if (cols.tmt_pensiun) selected.push({ key: 'tmt_pensiun', header: 'TMT Pensiun', get: (row) => formatDate(row.TMT_PENSIUN) })
+			const header = selected.map(s => s.header)
 			const csvLines = [header.join(sep)]
 			for (const r of rows) {
-				const clean = (v: string | null | undefined) => (v ?? '').replace(/[\r\n]+/g, ' ').trim()
-				csvLines.push([
-					JSON.stringify("'" + (r.NIP_BARU || '')),
-					JSON.stringify(clean(r.NAMA_LENGKAP)),
-					JSON.stringify(clean(r.SATUAN_KERJA)),
-					JSON.stringify(clean(r.induk_unit)),
-					JSON.stringify(clean(r.KET_JABATAN)),
-					JSON.stringify(clean(r.pangkat_asn)),
-					JSON.stringify(clean(r.GOL_RUANG)),
-				].join(sep))
+				const line = selected.map(s => JSON.stringify(s.get(r)))
+				csvLines.push(line.join(sep))
 			}
 			const now = new Date()
 			const pad = (n: number) => String(n).padStart(2, '0')
@@ -335,27 +339,32 @@ export default function EmployeesPage() {
 				const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPage}&page=${page}&search=${encodeURIComponent(search)}${indukParam}${statusParam}`)
 				rows = json.data.data || []
 			}
-			// Build a real XLSX workbook (no more Excel warnings)
-			const header = ['NIP','Nama','Unit Kerja','Induk','Jabatan','Pangkat','Golongan']
-			const data = rows.map(r => [
-				// Keep NIP as text
-				r.NIP_BARU ?? '',
-				r.NAMA_LENGKAP ?? '',
-				r.SATUAN_KERJA ?? '',
-				r.induk_unit ?? '',
-				r.KET_JABATAN ?? '',
-				r.pangkat_asn ?? '',
-				r.GOL_RUANG ?? '',
-			])
+			// Build a real XLSX workbook (no more Excel warnings) with dynamic columns
+			const formatDate = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString('id-ID') : '')
+			const selected: { key: string; header: string; get: (row: Employee) => string }[] = []
+			if (cols.nip) selected.push({ key: 'nip', header: 'NIP', get: (row) => row.NIP_BARU || '' })
+			if (cols.nama) selected.push({ key: 'nama', header: 'Nama', get: (row) => row.NAMA_LENGKAP || '' })
+			if (cols.unit) selected.push({ key: 'unit', header: 'Unit Kerja', get: (row) => row.SATUAN_KERJA || '' })
+			if (cols.induk) selected.push({ key: 'induk', header: 'Induk', get: (row) => row.induk_unit || '' })
+			if (cols.jabatan) selected.push({ key: 'jabatan', header: 'Jabatan', get: (row) => row.KET_JABATAN || '' })
+			if (cols.pangkat) selected.push({ key: 'pangkat', header: 'Pangkat', get: (row) => row.pangkat_asn || '' })
+			if (cols.golongan) selected.push({ key: 'golongan', header: 'Golongan', get: (row) => row.GOL_RUANG || '' })
+			if (cols.tmt_jabatan) selected.push({ key: 'tmt_jabatan', header: 'TMT Jabatan', get: (row) => formatDate(row.TMT_JABATAN) })
+			if (cols.tmt_pensiun) selected.push({ key: 'tmt_pensiun', header: 'TMT Pensiun', get: (row) => formatDate(row.TMT_PENSIUN) })
+			const header = selected.map(s => s.header)
+			const data = rows.map(r => selected.map(s => s.get(r)))
 			const worksheet = XLSX.utils.aoa_to_sheet([header, ...data])
-			// Ensure first column (A) is treated as text by Excel
-			const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1')
-			for (let row = range.s.r + 1; row <= range.e.r; row++) { // skip header row
-				const cellRef = XLSX.utils.encode_cell({ r: row, c: 0 })
-				const cell = worksheet[cellRef]
-				if (cell) {
-					cell.t = 's' // force string
-					;(cell as any).z = '@' // text format
+			// If NIP column is selected, ensure that column is treated as text by Excel
+			const nipColIndex = selected.findIndex(s => s.key === 'nip')
+			if (nipColIndex >= 0) {
+				const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1')
+				for (let row = range.s.r + 1; row <= range.e.r; row++) { // skip header row
+					const cellRef = XLSX.utils.encode_cell({ r: row, c: nipColIndex })
+					const cell = worksheet[cellRef]
+					if (cell) {
+						cell.t = 's'
+						;(cell as any).z = '@'
+					}
 				}
 			}
 			const workbook = XLSX.utils.book_new()
@@ -455,6 +464,8 @@ export default function EmployeesPage() {
 							<li><label className="flex items-center gap-2"><input type="checkbox" className="checkbox checkbox-sm" checked={cols.jabatan} onChange={()=>toggleCol('jabatan')} /><span>Jabatan</span></label></li>
 							<li><label className="flex items-center gap-2"><input type="checkbox" className="checkbox checkbox-sm" checked={cols.pangkat} onChange={()=>toggleCol('pangkat')} /><span>Pangkat</span></label></li>
 							<li><label className="flex items-center gap-2"><input type="checkbox" className="checkbox checkbox-sm" checked={cols.golongan} onChange={()=>toggleCol('golongan')} /><span>Golongan</span></label></li>
+						<li><label className="flex items-center gap-2"><input type="checkbox" className="checkbox checkbox-sm" checked={cols.tmt_jabatan} onChange={()=>toggleCol('tmt_jabatan')} /><span>TMT Jabatan</span></label></li>
+						<li><label className="flex items-center gap-2"><input type="checkbox" className="checkbox checkbox-sm" checked={cols.tmt_pensiun} onChange={()=>toggleCol('tmt_pensiun')} /><span>TMT Pensiun</span></label></li>
 							<li><label className="flex items-center gap-2"><input type="checkbox" className="checkbox checkbox-sm" checked={cols.actions} onChange={()=>toggleCol('actions')} /><span>Actions</span></label></li>
 						</ul>
 					</div>
@@ -506,6 +517,8 @@ export default function EmployeesPage() {
 							{cols.jabatan && <th>Jabatan</th>}
 							{cols.pangkat && <th>Pangkat</th>}
 							{cols.golongan && <th>Golongan</th>}
+							{cols.tmt_jabatan && <th className="hidden md:table-cell">TMT Jabatan</th>}
+							{cols.tmt_pensiun && <th className="hidden md:table-cell">TMT Pensiun</th>}
 							{cols.actions && <th className="w-28 text-center">Aksi</th>}
 						</tr>
 					</thead>
@@ -549,6 +562,12 @@ export default function EmployeesPage() {
 						{cols.jabatan && <td className="hidden md:table-cell whitespace-normal break-words">{e.KET_JABATAN ?? '-'}</td>}
 						{cols.pangkat && <td>{e.pangkat_asn ?? '-'}</td>}
 								{cols.golongan && <td>{e.GOL_RUANG ?? '-'}</td>}
+								{cols.tmt_jabatan && (
+									<td className="hidden md:table-cell">{e.TMT_JABATAN ? new Date(e.TMT_JABATAN).toLocaleDateString('id-ID') : '-'}</td>
+								)}
+								{cols.tmt_pensiun && (
+									<td className="hidden md:table-cell">{e.TMT_PENSIUN ? new Date(e.TMT_PENSIUN).toLocaleDateString('id-ID') : '-'}</td>
+								)}
 								{cols.actions && (
 									<td className="text-right">
 								<div className="join join-horizontal justify-end">
