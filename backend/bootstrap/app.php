@@ -14,8 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Apply CORS headers for API
-        $middleware->append(\App\Http\Middleware\CorsMiddleware::class);
+        // Apply CORS headers only for API routes
+        $middleware->api(prepend: [
+            \App\Http\Middleware\CorsMiddleware::class,
+        ]);
 
         // Route middleware aliases (Laravel 11 style)
         $middleware->alias([

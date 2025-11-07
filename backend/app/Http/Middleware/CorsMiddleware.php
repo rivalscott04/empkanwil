@@ -23,21 +23,11 @@ class CorsMiddleware
             return $response;
         }
 
-        try {
-            /** @var Response $response */
-            $response = $next($request);
-        } catch (\Throwable $e) {
-            // Jika terjadi exception, buat response error dengan CORS headers
-            $response = response()->json([
-                'success' => false,
-                'message' => app()->environment('production') 
-                    ? 'Internal Server Error' 
-                    : $e->getMessage(),
-                'error_code' => 500,
-            ], 500);
-        }
+        // Process request normally - let Laravel handle exceptions
+        /** @var Response $response */
+        $response = $next($request);
 
-        // Selalu tambahkan CORS headers, bahkan pada error response
+        // Tambahkan CORS headers ke response
         $this->addCorsHeaders($response, $origin, $allowedOrigins, $request);
 
         return $response;
