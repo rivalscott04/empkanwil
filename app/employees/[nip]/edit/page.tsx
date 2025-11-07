@@ -52,6 +52,8 @@ export default function EmployeeEditPage() {
     return false;
   }
 
+  const readOnly = role === "user" || role === "";
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!data || readOnly) return;
@@ -105,8 +107,6 @@ export default function EmployeeEditPage() {
         </a>
       </div>
     );
-
-  const readOnly = role === "user" || role === "";
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
