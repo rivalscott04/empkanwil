@@ -21,6 +21,14 @@ export default function EmployeeEditPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    
+    // Validate NIP parameter
+    if (!nip || nip.trim() === '') {
+      setError("Parameter NIP tidak valid");
+      setLoading(false);
+      return;
+    }
+
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     if (!token) {
       router.replace("/auth/login");
@@ -31,9 +39,19 @@ export default function EmployeeEditPage() {
     async function load() {
       try {
         const json = await apiFetch<{ success: boolean; data: Employee }>(`/employees/${nip}`);
+        if (!json.data) {
+          setError("Data pegawai tidak ditemukan");
+          return;
+        }
         setData(json.data);
-      } catch (err) {
-        setError("Gagal memuat data pegawai");
+      } catch (err: any) {
+        const errorMsg = err?.message || "Gagal memuat data pegawai";
+        setError(errorMsg);
+        // Don't set loading to false if it's a network error that might recover
+        if (errorMsg.includes("fetch") || errorMsg.includes("network")) {
+          // Keep loading state for network errors
+          return;
+        }
       } finally {
         setLoading(false);
       }
@@ -89,12 +107,41 @@ export default function EmployeeEditPage() {
   if (error && !data)
     return (
       <div className="p-6">
-        <div className="alert alert-error">{error}</div>
+        <div className="alert alert-error">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="stroke-current shrink-0 h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span>{error}</span>
+        </div>
         <a href="/employees" className="btn btn-primary mt-4">
           Kembali ke Daftar
         </a>
       </div>
     );
+
+  // Safety check: if no data after loading, show error
+  if (!data && !loading) {
+    return (
+      <div className="p-6">
+        <div className="alert alert-error">
+          <span>Data pegawai tidak ditemukan untuk NIP: {nip}</span>
+        </div>
+        <a href="/employees" className="btn btn-primary mt-4">
+          Kembali ke Daftar
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
