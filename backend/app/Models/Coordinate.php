@@ -18,3 +18,4 @@ class Coordinate extends Model
     ];
 }
 
+
