@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Employee } from "@/lib/types";
 import { useParams, useRouter } from "next/navigation";
 import { apiFetch, getRole } from "@/lib/api";
@@ -18,6 +18,11 @@ export default function EmployeeEditPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState<string>("");
+  const successModalRef = useRef<HTMLDialogElement>(null);
+  const errorModalRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -89,12 +94,57 @@ export default function EmployeeEditPage() {
         body: JSON.stringify(payload),
       });
 
-      router.replace(`/employees`);
+      // Show success modal
+      setModalMessage("Data pegawai berhasil diperbarui!");
+      setShowSuccessModal(true);
+      successModalRef.current?.showModal();
     } catch (err: any) {
-      setError(err.message || "Gagal menyimpan perubahan");
+      let errorMsg = "Gagal menyimpan perubahan data pegawai";
+      
+      // Parse error message untuk memberikan info yang lebih spesifik
+      const originalError = err.message || "";
+      
+      if (originalError.includes("fetch") || originalError.includes("network") || originalError.includes("Failed to fetch")) {
+        errorMsg = "Gagal menyimpan: Tidak dapat terhubung ke server. Periksa koneksi internet Anda.";
+      } else if (originalError.includes("validation") || originalError.includes("errors")) {
+        // Error dari validasi backend
+        errorMsg = `Gagal menyimpan: ${originalError}`;
+      } else if (originalError.includes("401") || originalError.includes("Unauthorized")) {
+        errorMsg = "Gagal menyimpan: Sesi Anda telah berakhir. Silakan login kembali.";
+      } else if (originalError.includes("403") || originalError.includes("Forbidden")) {
+        errorMsg = "Gagal menyimpan: Anda tidak memiliki izin untuk mengubah data ini.";
+      } else if (originalError.includes("404") || originalError.includes("Not Found")) {
+        errorMsg = "Gagal menyimpan: Data pegawai tidak ditemukan di server.";
+      } else if (originalError.includes("422") || originalError.includes("Unprocessable")) {
+        errorMsg = `Gagal menyimpan: ${originalError}`;
+      } else if (originalError.includes("500") || originalError.includes("Internal Server Error")) {
+        errorMsg = "Gagal menyimpan: Terjadi kesalahan pada server. Silakan coba lagi nanti.";
+      } else if (originalError.includes("429") || originalError.includes("Too Many Requests")) {
+        errorMsg = "Gagal menyimpan: Terlalu banyak permintaan. Silakan tunggu beberapa saat dan coba lagi.";
+      } else if (originalError.trim() !== "") {
+        // Gunakan pesan error dari server jika ada
+        errorMsg = `Gagal menyimpan: ${originalError}`;
+      }
+      
+      setError(errorMsg);
+      // Show error modal
+      setModalMessage(errorMsg);
+      setShowErrorModal(true);
+      errorModalRef.current?.showModal();
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleSuccessModalClose() {
+    setShowSuccessModal(false);
+    successModalRef.current?.close();
+    router.replace(`/employees`);
+  }
+
+  function handleErrorModalClose() {
+    setShowErrorModal(false);
+    errorModalRef.current?.close();
   }
 
   if (loading)
@@ -615,6 +665,74 @@ export default function EmployeeEditPage() {
           </div>
         </div>
       </form>
+
+      {/* Success Modal */}
+      <dialog ref={successModalRef} className="modal">
+        <div className="modal-box">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-shrink-0">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-8 w-8 text-success"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <h3 className="font-bold text-lg text-success">Update data Berhasil!</h3>
+          </div>
+          <p className="py-4 text-base-content">{modalMessage}</p>
+          <div className="modal-action">
+            <button className="btn btn-success" onClick={handleSuccessModalClose}>
+              OK
+            </button>
+          </div>
+        </div>
+        <form method="dialog" className="modal-backdrop">
+          <button onClick={handleSuccessModalClose}>close</button>
+        </form>
+      </dialog>
+
+      {/* Error Modal */}
+      <dialog ref={errorModalRef} className="modal">
+        <div className="modal-box">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-shrink-0">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-8 w-8 text-error"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <h3 className="font-bold text-lg text-error">Gagal!</h3>
+          </div>
+          <p className="py-4 text-base-content">{modalMessage}</p>
+          <div className="modal-action">
+            <button className="btn btn-error" onClick={handleErrorModalClose}>
+              Tutup
+            </button>
+          </div>
+        </div>
+        <form method="dialog" className="modal-backdrop">
+          <button onClick={handleErrorModalClose}>close</button>
+        </form>
+      </dialog>
     </div>
   );
 }
