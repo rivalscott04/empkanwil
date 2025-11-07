@@ -41,11 +41,18 @@ return Application::configure(basePath: dirname(__DIR__))
                     ? 'An error occurred' 
                     : $e->getMessage();
                 
-                return response()->json([
+                $response = response()->json([
                     'success' => false,
                     'message' => $message,
                     'error_code' => $statusCode,
                 ], $statusCode);
+
+                // Tambahkan CORS headers
+                if (function_exists('App\Helpers\addCorsHeadersToResponse')) {
+                    \App\Helpers\addCorsHeadersToResponse($response, $request);
+                }
+
+                return $response;
             }
         });
     })

@@ -43,12 +43,47 @@ function handleApiException(Request $request, Throwable $exception): JsonRespons
         $message = getSafeErrorMessage($statusCode);
     }
 
-    return response()->json([
+    $response = response()->json([
         'success' => false,
         'message' => $message,
         'error_code' => $statusCode,
         'errors' => $errors,
     ], $statusCode);
+
+    // Tambahkan CORS headers ke error response
+    addCorsHeadersToResponse($response, $request);
+
+    return $response;
+}
+
+/**
+ * Add CORS headers to response
+ */
+function addCorsHeadersToResponse(JsonResponse $response, Request $request): void
+{
+    $allowedOrigins = explode(',', env('ALLOWED_ORIGINS', 'https://sdm.rivaldev.site,http://localhost:3800'));
+    $allowedOrigins = array_map('trim', $allowedOrigins);
+    
+    $origin = $request->headers->get('Origin');
+
+    // Check if origin is allowed
+    if ($origin && in_array($origin, $allowedOrigins, true)) {
+        $response->headers->set('Access-Control-Allow-Origin', $origin);
+    } else {
+        // For same-origin requests (no Origin header) or null origin
+        if (!$origin || $origin === 'null') {
+            $response->headers->set('Access-Control-Allow-Origin', $request->getSchemeAndHttpHost());
+        } else {
+            // Fallback to first allowed origin
+            $response->headers->set('Access-Control-Allow-Origin', $allowedOrigins[0] ?? '*');
+        }
+    }
+
+    $response->headers->set('Vary', 'Origin');
+    $response->headers->set('Access-Control-Allow-Credentials', 'true');
+    $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    $response->headers->set('Access-Control-Max-Age', '86400');
 }
 
 /**
