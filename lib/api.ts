@@ -21,15 +21,12 @@ function clearAuthData() {
 	sessionStorage.removeItem('username')
 }
 
-export async function apiFetch<T = any>(path: string, init?: RequestInit, retryCount = 0): Promise<T> {
+export async function apiFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
 	const token = getToken()
 	const headers: HeadersInit = {
 		...(init?.headers || {}),
 		Authorization: token ? `Bearer ${token}` : ''
 	};
-	
-	const maxRetries = 3;
-	const baseDelay = 1000; // 1 second
 	
 	try {
 		const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`,
@@ -41,20 +38,6 @@ export async function apiFetch<T = any>(path: string, init?: RequestInit, retryC
 				clearAuthData()
 				window.location.href = '/auth/login'
 				throw new Error('Unauthorized')
-			}
-			
-			// Handle rate limiting (429) with retry logic
-			if (res.status === 429 && retryCount < maxRetries) {
-				const retryAfter = res.headers.get('Retry-After');
-				const delay = retryAfter 
-					? parseInt(retryAfter) * 1000 
-					: baseDelay * Math.pow(2, retryCount); // Exponential backoff
-				
-				// Wait before retrying
-				await new Promise(resolve => setTimeout(resolve, delay));
-				
-				// Retry the request
-				return apiFetch<T>(path, init, retryCount + 1);
 			}
 			
 			// Try to get JSON error response
