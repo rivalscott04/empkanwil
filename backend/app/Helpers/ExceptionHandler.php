@@ -43,17 +43,12 @@ function handleApiException(Request $request, Throwable $exception): JsonRespons
         $message = getSafeErrorMessage($statusCode);
     }
 
-    $response = response()->json([
+    return response()->json([
         'success' => false,
         'message' => $message,
         'error_code' => $statusCode,
         'errors' => $errors,
     ], $statusCode);
-
-    // Tambahkan CORS headers ke error response
-    addCorsHeadersToResponse($response, $request);
-
-    return $response;
 }
 
 /**

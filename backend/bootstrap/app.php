@@ -14,10 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Apply CORS headers only for API routes
-        $middleware->api(prepend: [
-            \App\Http\Middleware\CorsMiddleware::class,
-        ]);
+        // Apply CORS headers for API
+        $middleware->append(\App\Http\Middleware\CorsMiddleware::class);
 
         // Route middleware aliases (Laravel 11 style)
         $middleware->alias([
@@ -43,18 +41,11 @@ return Application::configure(basePath: dirname(__DIR__))
                     ? 'An error occurred' 
                     : $e->getMessage();
                 
-                $response = response()->json([
+                return response()->json([
                     'success' => false,
                     'message' => $message,
                     'error_code' => $statusCode,
                 ], $statusCode);
-
-                // Tambahkan CORS headers
-                if (function_exists('App\Helpers\addCorsHeadersToResponse')) {
-                    \App\Helpers\addCorsHeadersToResponse($response, $request);
-                }
-
-                return $response;
             }
         });
     })
