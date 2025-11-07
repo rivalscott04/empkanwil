@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Route middleware aliases (Laravel 11 style)
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'throttle.user' => \App\Http\Middleware\ThrottlePerUser::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
