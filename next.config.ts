@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
       exclude: ['error', 'warn'], // Keep error and warn for production debugging
     } : false,
   },
+  // Ensure proper static file and chunk handling
+  experimental: {
+    // Ensure chunks are properly generated
+    optimizePackageImports: ['daisyui', 'leaflet', 'react-leaflet'],
+  },
   // Disable Turbopack untuk sementara karena ada issue dengan react-leaflet
   // Untuk production, bisa enable kembali setelah fix
   // webpack: (config) => config,
