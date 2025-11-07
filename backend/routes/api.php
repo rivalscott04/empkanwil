@@ -53,10 +53,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 	});
 
 	// Admin & Operator - update employees
-	// Rate limit lebih tinggi karena ini operasi penting dan tidak sering dilakukan
-	// Menggunakan throttle per user (bukan per IP) untuk menghindari konflik dengan user lain
+	// Rate limit lebih tinggi untuk menghindari 429 error
 	Route::middleware('role:admin|operator')->group(function () {
 		Route::put('/employees/{employee:NIP_BARU}', [EmployeeController::class, 'update'])
-			->middleware('throttle.user:100,1'); // 100 requests per minute per user
+			->middleware('throttle:100,1'); // 100 requests per minute
 	});
 });

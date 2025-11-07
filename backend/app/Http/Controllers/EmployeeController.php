@@ -7,7 +7,6 @@ use App\Http\Requests\EmployeeIndexRequest;
 use App\Http\Requests\EmployeeByLocationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class EmployeeController extends Controller
@@ -237,61 +236,28 @@ class EmployeeController extends Controller
 
 	public function update(Request $request, Employee $employee)
 	{
-		try {
-			$this->authorize('update', $employee);
+		$this->authorize('update', $employee);
 
-			$userRole = $request->user()->loadMissing('role')->role?->name;
-			
-			// Admin can edit all fields except induk (computed field, read-only for everyone)
-			// Operator can edit all fields except NIP_BARU and induk
-			if ($userRole === 'admin') {
-				// Admin can edit everything except induk (computed field)
-				$fillable = ['NIP','NIP_BARU','NAMA_LENGKAP','KODE_PANGKAT','GOL_RUANG','pangkat_asn','TMT_PANGKAT','MK_TAHUN','MK_BULAN','KODE_SATUAN_KERJA','SATUAN_KERJA','KODE_JABATAN','KET_JABATAN','TMT_JABATAN','NAMA_SEKOLAH','KODE_JENJANG_PENDIDIKAN','JENJANG_PENDIDIKAN','AKTA','FAKULTAS_PENDIDIKAN','JURUSAN','TAHUN_LULUS','TGL_LAHIR','TEMPAT_LAHIR','ISI_UNIT_KERJA','kab_kota','TMT_PENSIUN','tmt_cpns'];
-			} else if ($userRole === 'operator') {
-				// Operator can edit everything except NIP_BARU and induk
-				$fillable = ['NIP','NAMA_LENGKAP','KODE_PANGKAT','GOL_RUANG','pangkat_asn','TMT_PANGKAT','MK_TAHUN','MK_BULAN','KODE_SATUAN_KERJA','SATUAN_KERJA','KODE_JABATAN','KET_JABATAN','TMT_JABATAN','NAMA_SEKOLAH','KODE_JENJANG_PENDIDIKAN','JENJANG_PENDIDIKAN','AKTA','FAKULTAS_PENDIDIKAN','JURUSAN','TAHUN_LULUS','TGL_LAHIR','TEMPAT_LAHIR','ISI_UNIT_KERJA','kab_kota','TMT_PENSIUN','tmt_cpns'];
-			} else {
-				// Other roles cannot update
-				abort(403, 'Forbidden');
-			}
-
-			// Filter data hanya field yang diizinkan dan yang ada di request
-			$data = [];
-			foreach ($fillable as $field) {
-				if ($request->has($field)) {
-					$value = $request->input($field);
-					// Convert empty string to null untuk field nullable
-					if ($value === '') {
-						$value = null;
-					}
-					$data[$field] = $value;
-				}
-			}
-
-			// Update employee dengan data yang sudah difilter
-			$employee->fill($data);
-			$employee->save();
-
-			return response()->json(['success' => true, 'data' => $employee]);
-		} catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+		$userRole = $request->user()->loadMissing('role')->role?->name;
+		
+		// Admin can edit all fields except induk (computed field, read-only for everyone)
+		// Operator can edit all fields except NIP_BARU and induk
+		if ($userRole === 'admin') {
+			// Admin can edit everything except induk (computed field)
+			$fillable = ['NIP','NIP_BARU','NAMA_LENGKAP','KODE_PANGKAT','GOL_RUANG','pangkat_asn','TMT_PANGKAT','MK_TAHUN','MK_BULAN','KODE_SATUAN_KERJA','SATUAN_KERJA','KODE_JABATAN','KET_JABATAN','TMT_JABATAN','NAMA_SEKOLAH','KODE_JENJANG_PENDIDIKAN','JENJANG_PENDIDIKAN','AKTA','FAKULTAS_PENDIDIKAN','JURUSAN','TAHUN_LULUS','TGL_LAHIR','TEMPAT_LAHIR','ISI_UNIT_KERJA','kab_kota','TMT_PENSIUN','tmt_cpns'];
+		} else if ($userRole === 'operator') {
+			// Operator can edit everything except NIP_BARU and induk
+			$fillable = ['NIP','NAMA_LENGKAP','KODE_PANGKAT','GOL_RUANG','pangkat_asn','TMT_PANGKAT','MK_TAHUN','MK_BULAN','KODE_SATUAN_KERJA','SATUAN_KERJA','KODE_JABATAN','KET_JABATAN','TMT_JABATAN','NAMA_SEKOLAH','KODE_JENJANG_PENDIDIKAN','JENJANG_PENDIDIKAN','AKTA','FAKULTAS_PENDIDIKAN','JURUSAN','TAHUN_LULUS','TGL_LAHIR','TEMPAT_LAHIR','ISI_UNIT_KERJA','kab_kota','TMT_PENSIUN','tmt_cpns'];
+		} else {
+			// Other roles cannot update
 			abort(403, 'Forbidden');
-		} catch (\Exception $e) {
-			// Log error untuk debugging
-			Log::error('Employee update error: ' . $e->getMessage(), [
-				'exception' => $e,
-				'employee_id' => $employee->NIP_BARU ?? null,
-				'user_id' => $request->user()?->id,
-			]);
-			
-			// Return error dengan pesan yang jelas
-			return response()->json([
-				'success' => false,
-				'message' => app()->environment('production') 
-					? 'Gagal memperbarui data pegawai' 
-					: $e->getMessage(),
-				'error_code' => 500,
-			], 500);
 		}
+
+		$data = $request->only($fillable);
+		$employee->fill($data);
+		$employee->save();
+
+		return response()->json(['success' => true, 'data' => $employee]);
 	}
 
 	public function destroy(Employee $employee)

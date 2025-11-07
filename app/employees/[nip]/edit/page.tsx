@@ -18,7 +18,6 @@ export default function EmployeeEditPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>("");
-  const [lastSubmitTime, setLastSubmitTime] = useState<number>(0);
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -58,18 +57,8 @@ export default function EmployeeEditPage() {
     e.preventDefault();
     if (!data || readOnly) return;
 
-    // Debounce: prevent multiple rapid submissions (minimum 2 seconds between submissions)
-    const now = Date.now();
-    const timeSinceLastSubmit = now - lastSubmitTime;
-    if (timeSinceLastSubmit < 2000) {
-      setError("Tunggu sebentar sebelum menyimpan lagi");
-      return;
-    }
-
     setError("");
     setSaving(true);
-    setLastSubmitTime(now);
-    
     try {
       const payload: Record<string, any> = {};
       for (const [key, value] of new FormData(e.currentTarget).entries()) {
@@ -84,7 +73,6 @@ export default function EmployeeEditPage() {
 
       router.replace(`/employees`);
     } catch (err: any) {
-      // Error message should already be user-friendly from apiFetch
       setError(err.message || "Gagal menyimpan perubahan");
     } finally {
       setSaving(false);
