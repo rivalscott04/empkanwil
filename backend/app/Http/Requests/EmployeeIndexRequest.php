@@ -26,7 +26,7 @@ class EmployeeIndexRequest extends FormRequest
             'kode_jabatan' => ['nullable', 'string', 'max:50'],
             'status' => ['nullable', 'in:aktif,pensiun'],
             'page' => ['nullable', 'integer', 'min:1'],
-            'per_page' => ['nullable', 'string', 'in:10,25,50,100,200,500,all'],
+            'per_page' => ['nullable', 'string', 'in:10,25,50,100,200,1500,all'],
         ];
     }
 

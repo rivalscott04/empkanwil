@@ -245,7 +245,7 @@ export default function EmployeesPage() {
 		const statusParam = statusFilter ? `&status=${encodeURIComponent(statusFilter)}` : ''
 		const allRows: Employee[] = []
 		let currentPage = 1
-		const perPageFetch = 500 // Use max allowed per page
+		const perPageFetch = 1500 // Use max allowed per page
 		
 		while (true) {
 			const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPageFetch}&page=${currentPage}&search=${encodeURIComponent(search)}${indukParam}${statusParam}`)
@@ -431,7 +431,7 @@ export default function EmployeesPage() {
 						<option value="50">50</option>
 						<option value="100">100</option>
 						<option value="200">200</option>
-						<option value="500">500</option>
+						<option value="1500">1500</option>
 					</select>
 				</div>
 				{/* Row 2: Search full width */}

@@ -22,20 +22,20 @@ class EmployeeController extends Controller
 		if (is_string($perPageRaw) && strtolower($perPageRaw) === 'all') {
 			// Don't allow 'all' in production
 			if (app()->environment('production')) {
-				$perPage = 500; // Max in production
+				$perPage = 1500; // Max in production
 			} else {
 				$perPage = 10000; // Max in development
 			}
 		} else {
 			$perPage = (int) $perPageRaw;
-			$allowed = [10, 25, 50, 100, 200, 500];
+			$allowed = [10, 25, 50, 100, 200, 1500];
 			if (!in_array($perPage, $allowed, true)) {
 				$perPage = 15;
 			}
 		}
 		
 		// Enforce maximum limit
-		$perPage = min($perPage, 500); // Maximum 500 records per page
+		$perPage = min($perPage, 1500); // Maximum 1500 records per page
 		$search = $validated['search'] ?? '';
 		$induk = $validated['induk'] ?? '';
 		$jabatan = $validated['jabatan'] ?? '';
