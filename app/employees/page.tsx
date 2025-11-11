@@ -12,6 +12,8 @@ export default function EmployeesPage() {
 	const [page, setPage] = useState(1)
 	const [total, setTotal] = useState(0)
 	const [perPage, setPerPage] = useState(10)
+	const [from, setFrom] = useState(0)
+	const [to, setTo] = useState(0)
 	const [search, setSearch] = useState('')
 	const [loading, setLoading] = useState(false)
 	const [selected, setSelected] = useState<Employee | null>(null)
@@ -102,6 +104,8 @@ export default function EmployeesPage() {
 			const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${per}&page=${current}&search=${encodeURIComponent(q)}${indukParam}${statusParam}`)
 			setItems(json.data.data || [])
 			setTotal(json.data.total || 0)
+			setFrom(json.data.from || 0)
+			setTo(json.data.to || 0)
 			// Don't update perPage from backend response to avoid state conflicts
 			// setPerPage(json.data.per_page || per)
 		} catch (error) {
@@ -769,12 +773,24 @@ export default function EmployeesPage() {
 				<form method="dialog" className="modal-backdrop"><button>Tutup</button></form>
 			</dialog>
 			<div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-				<div className="text-sm opacity-70">Menampilkan {items.length} dari {total} data</div>
-				<div className="join">
-					<button className="btn join-item" disabled={page<=1} onClick={()=>{ const p = page-1; setPage(p); load(p, search, perPage) }}>{'«'}</button>
-					<button className="btn join-item">{page}</button>
-					<button className="btn join-item" disabled={page>=pages} onClick={()=>{ const p = page+1; setPage(p); load(p, search, perPage) }}>{'»'}</button>
+				<div className="text-sm opacity-70">
+					{total > 0 ? (
+						from > 0 && to > 0 ? (
+							`Menampilkan ${from.toLocaleString('id-ID')}-${to.toLocaleString('id-ID')} dari ${total.toLocaleString('id-ID')} data`
+						) : (
+							`Menampilkan ${items.length.toLocaleString('id-ID')} dari ${total.toLocaleString('id-ID')} data`
+						)
+					) : (
+						'Tidak ada data'
+					)}
 				</div>
+				{pages > 1 && (
+					<div className="join">
+						<button className="btn join-item" disabled={page<=1} onClick={()=>{ const p = page-1; setPage(p); load(p, search, perPage) }}>{'«'}</button>
+						<button className="btn join-item">{page} / {pages}</button>
+						<button className="btn join-item" disabled={page>=pages} onClick={()=>{ const p = page+1; setPage(p); load(p, search, perPage) }}>{'»'}</button>
+					</div>
+				)}
 			</div>
 
 			{/* Modal Filter Induk */}

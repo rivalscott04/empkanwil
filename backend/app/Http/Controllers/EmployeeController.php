@@ -139,44 +139,6 @@ class EmployeeController extends Controller
 		$query->where('KET_JABATAN', $jabatan);
 	}
 	
-	// Handle large per_page requests with chunking
-	if ($perPage > 100) {
-		$pageNum = max(1, (int) ($validated['page'] ?? 1));
-		// Use chunking for large datasets
-		$all = collect();
-		$query->chunk(1000, function ($chunk) use (&$all) {
-			$all = $all->merge($chunk);
-		});
-		$totalCount = $all->count();
-		
-		// append computed field: induk_unit and sort by induk_unit (Kanwil first)
-		$kanwilName = 'Kantor Wilayah Kementerian Agama Provinsi Nusa Tenggara Barat';
-		$all->transform(function ($e) {
-			$e->induk_unit = $this->computeIndukUnit($e->SATUAN_KERJA, $e->kab_kota, $e->KET_JABATAN ?? null);
-			return $e;
-		})->sortBy(function ($e) use ($kanwilName) {
-			// Sort: Kanwil first, then alphabetically by induk_unit, then by NAMA_LENGKAP
-			$induk = $e->induk_unit ?? '';
-			if ($induk === $kanwilName) {
-				return '0_' . strtolower($e->NAMA_LENGKAP ?? '');
-			}
-			return '1_' . strtolower($induk) . '_' . strtolower($e->NAMA_LENGKAP ?? '');
-		})->values();
-		
-		return response()->json([
-			'success' => true,
-			'data' => [
-				'data' => $all,
-				'total' => $totalCount,
-				'per_page' => $perPage,
-				'current_page' => $pageNum,
-				'last_page' => 1,
-				'from' => 1,
-				'to' => $totalCount,
-			],
-		]);
-	}
-	
 	// Get data with chunking, compute induk_unit, sort, then paginate manually
 	$all = collect();
 	$query->chunk(1000, function ($chunk) use (&$all) {
