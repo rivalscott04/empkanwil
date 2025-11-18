@@ -41,6 +41,7 @@ class EmployeeController extends Controller
 		$jabatan = $validated['jabatan'] ?? '';
 		$kodeJabatan = $validated['kode_jabatan'] ?? '';
 		$status = $validated['status'] ?? ''; // 'aktif' or 'pensiun'
+		$golongan = $validated['golongan'] ?? '';
 
 		$query = Employee::query();
 		if ($search !== '') {
@@ -67,12 +68,17 @@ class EmployeeController extends Controller
 				->where('TMT_PENSIUN', '<=', now()->toDateString());
 		}
 
+		// Filter by golongan
+		if ($golongan !== '') {
+			$query->where('GOL_RUANG', $golongan);
+		}
+
 		if ($induk !== '' || $kodeJabatan !== '' || $jabatan !== '') {
 		// Manual filter by canonical induk with computed mapping, then manual paginate
 		$pageNum = max(1, (int) ($validated['page'] ?? 1));
 			// Use chunking to avoid memory exhaustion for large datasets
 			$filtered = collect();
-			$query->chunk(1000, function ($chunk) use (&$filtered, $induk, $kodeJabatan, $jabatan, $status) {
+			$query->chunk(1000, function ($chunk) use (&$filtered, $induk, $kodeJabatan, $jabatan, $status, $golongan) {
 				foreach ($chunk as $e) {
 					// Filter by induk
 					if ($induk !== '') {
@@ -88,6 +94,12 @@ class EmployeeController extends Controller
 						}
 					} elseif ($jabatan !== '') {
 						if ($e->KET_JABATAN !== $jabatan) {
+							continue;
+						}
+					}
+					// Filter by golongan
+					if ($golongan !== '') {
+						if ($e->GOL_RUANG !== $golongan) {
 							continue;
 						}
 					}

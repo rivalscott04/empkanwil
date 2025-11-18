@@ -25,6 +25,7 @@ class EmployeeIndexRequest extends FormRequest
             'jabatan' => ['nullable', 'string', 'max:255'],
             'kode_jabatan' => ['nullable', 'string', 'max:50'],
             'status' => ['nullable', 'in:aktif,pensiun'],
+            'golongan' => ['nullable', 'string', 'max:20'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'string', 'in:10,25,50,100,200,1500,all'],
         ];
@@ -38,7 +39,7 @@ class EmployeeIndexRequest extends FormRequest
         // Sanitize and trim all string inputs
         $inputs = $this->all();
         
-        foreach (['search', 'induk', 'jabatan', 'kode_jabatan'] as $field) {
+        foreach (['search', 'induk', 'jabatan', 'kode_jabatan', 'golongan'] as $field) {
             if (isset($inputs[$field])) {
                 $inputs[$field] = trim($inputs[$field]);
             }
@@ -66,6 +67,7 @@ class EmployeeIndexRequest extends FormRequest
         $validated['jabatan'] = $validated['jabatan'] ?? '';
         $validated['kode_jabatan'] = $validated['kode_jabatan'] ?? '';
         $validated['status'] = $validated['status'] ?? '';
+        $validated['golongan'] = $validated['golongan'] ?? '';
         
         return $validated;
     }

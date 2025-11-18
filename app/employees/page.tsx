@@ -23,13 +23,17 @@ export default function EmployeesPage() {
 	const searchRef = useRef<HTMLInputElement | null>(null)
 	const [indukFilter, setIndukFilter] = useState<string>('')
 	const [statusFilter, setStatusFilter] = useState<string>('')
+	const [golonganFilter, setGolonganFilter] = useState<string>('')
 	const [exporting, setExporting] = useState(false)
 	const [indukOptions, setIndukOptions] = useState<string[]>([])
 	const [indukSearch, setIndukSearch] = useState<string>('')
 	const [indukModalOpen, setIndukModalOpen] = useState(false)
 	const [statusModalOpen, setStatusModalOpen] = useState(false)
+	const [golonganModalOpen, setGolonganModalOpen] = useState(false)
 	const indukModalRef = useRef<HTMLDialogElement | null>(null)
 	const statusModalRef = useRef<HTMLDialogElement | null>(null)
+	const golonganModalRef = useRef<HTMLDialogElement | null>(null)
+	const golonganOptions = ['I/a', 'I/b', 'I/c', 'I/d', 'II/a', 'II/b', 'II/c', 'II/d', 'III/a', 'III/b', 'III/c', 'III/d', 'IV/a', 'IV/b', 'IV/c', 'IV/d', 'PPPK']
 	const [statistics, setStatistics] = useState<{ total: number; aktif: number; pensiun: number }>({ total: 0, aktif: 0, pensiun: 0 })
 	const [role, setRole] = useState<string>('')
 	const perPageRef = useRef(perPage)
@@ -52,10 +56,10 @@ export default function EmployeesPage() {
 	}, [perPage])
 
     // Calculate statistics with filters: query exact totals from filtered endpoints
-	async function loadFilteredStatistics(currSearch = search, currInduk = indukFilter, currStatus = statusFilter) {
+	async function loadFilteredStatistics(currSearch = search, currInduk = indukFilter, currStatus = statusFilter, currGolongan = golonganFilter) {
 		try {
             // If no filters, use backend statistics endpoint (fast and accurate)
-            if (!currSearch && !currInduk && !currStatus) {
+            if (!currSearch && !currInduk && !currStatus && !currGolongan) {
                 try {
                     const json = await apiFetch<{ success: boolean; data: { total: number; aktif: number; pensiun: number } }>(`/employees/statistics`)
                     if (json?.data) {
@@ -68,6 +72,7 @@ export default function EmployeesPage() {
                 const params: string[] = ['per_page=10', 'page=1']
 				if (currSearch) params.push(`search=${encodeURIComponent(currSearch)}`)
 				if (currInduk) params.push(`induk=${encodeURIComponent(currInduk)}`)
+				if (currGolongan) params.push(`golongan=${encodeURIComponent(currGolongan)}`)
 				const statusParam = statusOverride !== undefined ? statusOverride : (currStatus || '')
 				if (statusParam) params.push(`status=${encodeURIComponent(statusParam as string)}`)
 				return `/employees?${params.join('&')}`
@@ -101,7 +106,8 @@ export default function EmployeesPage() {
 		try {
 			const indukParam = indukFilter ? `&induk=${encodeURIComponent(indukFilter)}` : ''
 			const statusParam = statusFilter ? `&status=${encodeURIComponent(statusFilter)}` : ''
-			const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${per}&page=${current}&search=${encodeURIComponent(q)}${indukParam}${statusParam}`)
+			const golonganParam = golonganFilter ? `&golongan=${encodeURIComponent(golonganFilter)}` : ''
+			const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${per}&page=${current}&search=${encodeURIComponent(q)}${indukParam}${statusParam}${golonganParam}`)
 			setItems(json.data.data || [])
 			setTotal(json.data.total || 0)
 			setFrom(json.data.from || 0)
@@ -171,6 +177,14 @@ export default function EmployeesPage() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [statusFilter])
 
+	// reload when golongan filter changes
+	useEffect(() => {
+		setPage(1)
+		load(1, search, perPageRef.current)
+		loadFilteredStatistics(search, indukFilter, statusFilter, golonganFilter)
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [golonganFilter])
+
 	// restore column visibility preferences
 	useEffect(() => {
 		try {
@@ -219,6 +233,14 @@ export default function EmployeesPage() {
 		}
 	}, [statusModalOpen])
 
+	useEffect(() => {
+		if (golonganModalOpen && golonganModalRef.current) {
+			golonganModalRef.current.showModal()
+		} else if (golonganModalRef.current) {
+			golonganModalRef.current.close()
+		}
+	}, [golonganModalOpen])
+
 	function toggleCol(key: keyof typeof cols) {
 		setCols((prev) => {
 			const next = { ...prev, [key]: !prev[key] }
@@ -230,11 +252,12 @@ export default function EmployeesPage() {
 	function resetFilters() {
 		setIndukFilter('')
 		setStatusFilter('')
+		setGolonganFilter('')
 		setSearch('')
 		setPage(1)
 		load(1, '', perPage)
 		// Load statistics with empty filters (reset state)
-		loadFilteredStatistics('', '', '')
+		loadFilteredStatistics('', '', '', '')
 	}
 
 	function handlePerPageChange(value: string) {
@@ -247,12 +270,13 @@ export default function EmployeesPage() {
 	async function fetchAllData(): Promise<Employee[]> {
 		const indukParam = indukFilter ? `&induk=${encodeURIComponent(indukFilter)}` : ''
 		const statusParam = statusFilter ? `&status=${encodeURIComponent(statusFilter)}` : ''
+		const golonganParam = golonganFilter ? `&golongan=${encodeURIComponent(golonganFilter)}` : ''
 		const allRows: Employee[] = []
 		let currentPage = 1
 		const perPageFetch = 1500 // Use max allowed per page
 		
 		while (true) {
-			const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPageFetch}&page=${currentPage}&search=${encodeURIComponent(search)}${indukParam}${statusParam}`)
+			const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPageFetch}&page=${currentPage}&search=${encodeURIComponent(search)}${indukParam}${statusParam}${golonganParam}`)
 			const pageRows = json.data.data || []
 			if (pageRows.length === 0) break
 			
@@ -283,7 +307,8 @@ export default function EmployeesPage() {
 				// Fetch data according to current perPage selection (current page only)
 				const indukParam = indukFilter ? `&induk=${encodeURIComponent(indukFilter)}` : ''
 				const statusParam = statusFilter ? `&status=${encodeURIComponent(statusFilter)}` : ''
-				const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPage}&page=${page}&search=${encodeURIComponent(search)}${indukParam}${statusParam}`)
+				const golonganParam = golonganFilter ? `&golongan=${encodeURIComponent(golonganFilter)}` : ''
+				const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPage}&page=${page}&search=${encodeURIComponent(search)}${indukParam}${statusParam}${golonganParam}`)
 				rows = json.data.data || []
 			}
 			// build CSV with selectable separator and dynamic columns
@@ -300,6 +325,15 @@ export default function EmployeesPage() {
 			if (cols.golongan) selected.push({ key: 'golongan', header: 'Golongan', get: (row) => clean(row.GOL_RUANG) })
 			if (cols.tmt_jabatan) selected.push({ key: 'tmt_jabatan', header: 'TMT Jabatan', get: (row) => formatDate(row.TMT_JABATAN) })
 			if (cols.tmt_pensiun) selected.push({ key: 'tmt_pensiun', header: 'TMT Pensiun', get: (row) => formatDate(row.TMT_PENSIUN) })
+			// Always include TMT Pensiun and Tanggal Lahir when exporting all data
+			if (exportAll) {
+				// Add TMT Pensiun if not already included
+				if (!selected.find(s => s.key === 'tmt_pensiun')) {
+					selected.push({ key: 'tmt_pensiun', header: 'TMT Pensiun', get: (row) => formatDate(row.TMT_PENSIUN) })
+				}
+				// Add Tanggal Lahir
+				selected.push({ key: 'tanggal_lahir', header: 'Tanggal Lahir', get: (row) => formatDate(row.TGL_LAHIR) })
+			}
 			const header = selected.map(s => s.header)
 			const csvLines = [header.join(sep)]
 			for (const r of rows) {
@@ -345,7 +379,8 @@ export default function EmployeesPage() {
 				// Fetch data according to current perPage selection (current page only)
 				const indukParam = indukFilter ? `&induk=${encodeURIComponent(indukFilter)}` : ''
 				const statusParam = statusFilter ? `&status=${encodeURIComponent(statusFilter)}` : ''
-				const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPage}&page=${page}&search=${encodeURIComponent(search)}${indukParam}${statusParam}`)
+				const golonganParam = golonganFilter ? `&golongan=${encodeURIComponent(golonganFilter)}` : ''
+				const json = await apiFetch<PaginatedEmployees>(`/employees?per_page=${perPage}&page=${page}&search=${encodeURIComponent(search)}${indukParam}${statusParam}${golonganParam}`)
 				rows = json.data.data || []
 			}
 			// Build a real XLSX workbook (no more Excel warnings) with dynamic columns
@@ -360,6 +395,15 @@ export default function EmployeesPage() {
 			if (cols.golongan) selected.push({ key: 'golongan', header: 'Golongan', get: (row) => row.GOL_RUANG || '' })
 			if (cols.tmt_jabatan) selected.push({ key: 'tmt_jabatan', header: 'TMT Jabatan', get: (row) => formatDate(row.TMT_JABATAN) })
 			if (cols.tmt_pensiun) selected.push({ key: 'tmt_pensiun', header: 'TMT Pensiun', get: (row) => formatDate(row.TMT_PENSIUN) })
+			// Always include TMT Pensiun and Tanggal Lahir when exporting all data
+			if (exportAll) {
+				// Add TMT Pensiun if not already included
+				if (!selected.find(s => s.key === 'tmt_pensiun')) {
+					selected.push({ key: 'tmt_pensiun', header: 'TMT Pensiun', get: (row) => formatDate(row.TMT_PENSIUN) })
+				}
+				// Add Tanggal Lahir
+				selected.push({ key: 'tanggal_lahir', header: 'Tanggal Lahir', get: (row) => formatDate(row.TGL_LAHIR) })
+			}
 			const header = selected.map(s => s.header)
 			const data = rows.map(r => selected.map(s => s.get(r)))
 			const worksheet = XLSX.utils.aoa_to_sheet([header, ...data])
@@ -492,6 +536,14 @@ export default function EmployeesPage() {
 					onClick={() => setStatusModalOpen(true)}
 				>
 					<span>{statusFilter === 'aktif' ? 'Aktif' : statusFilter === 'pensiun' ? 'Pensiun' : 'Semua Status'}</span>
+					<span className="ml-auto">▼</span>
+				</button>
+				<button
+					type="button"
+					className="btn btn-sm w-full sm:w-auto sm:max-w-xs"
+					onClick={() => setGolonganModalOpen(true)}
+				>
+					<span>{golonganFilter || "Semua Golongan"}</span>
 					<span className="ml-auto">▼</span>
 				</button>
 					<button className="btn btn-sm whitespace-nowrap" onClick={resetFilters} title="Reset pencarian dan filter">Reset</button>
@@ -905,6 +957,47 @@ export default function EmployeesPage() {
 				</div>
 				<form method="dialog" className="modal-backdrop">
 					<button onClick={() => setStatusModalOpen(false)}>close</button>
+				</form>
+			</dialog>
+
+			{/* Modal Filter Golongan */}
+			<dialog ref={golonganModalRef} className="modal">
+				<div className="modal-box">
+					<h3 className="font-bold text-lg mb-4">Pilih Golongan</h3>
+					<ul className="menu max-h-96 overflow-y-auto">
+						<li>
+							<button
+								onClick={() => {
+									setGolonganFilter('')
+									setGolonganModalOpen(false)
+								}}
+								className={golonganFilter === '' ? 'active' : ''}
+							>
+								Semua Golongan
+							</button>
+						</li>
+						{golonganOptions.map((gol) => (
+							<li key={gol}>
+								<button
+									onClick={() => {
+										setGolonganFilter(gol)
+										setGolonganModalOpen(false)
+									}}
+									className={golonganFilter === gol ? 'active' : ''}
+								>
+									{gol}
+								</button>
+							</li>
+						))}
+					</ul>
+					<div className="modal-action">
+						<form method="dialog">
+							<button className="btn" onClick={() => setGolonganModalOpen(false)}>Tutup</button>
+						</form>
+					</div>
+				</div>
+				<form method="dialog" className="modal-backdrop">
+					<button onClick={() => setGolonganModalOpen(false)}>close</button>
 				</form>
 			</dialog>
 		</div>
