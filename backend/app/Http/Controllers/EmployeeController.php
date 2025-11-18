@@ -68,9 +68,18 @@ class EmployeeController extends Controller
 				->where('TMT_PENSIUN', '<=', now()->toDateString());
 		}
 
-		// Filter by golongan
+		// Filter by golongan (with mapping: non-standard -> PPPK)
 		if ($golongan !== '') {
-			$query->where('GOL_RUANG', $golongan);
+			if ($golongan === 'PPPK') {
+				// Filter untuk PPPK: semua golongan yang bukan standar PNS
+				$standarPNS = ['I/a', 'I/b', 'I/c', 'I/d', 'II/a', 'II/b', 'II/c', 'II/d', 'III/a', 'III/b', 'III/c', 'III/d', 'IV/a', 'IV/b', 'IV/c', 'IV/d'];
+				$query->whereNotIn('GOL_RUANG', $standarPNS)
+					->whereNotNull('GOL_RUANG')
+					->where('GOL_RUANG', '!=', '');
+			} else {
+				// Filter untuk golongan standar PNS
+				$query->where('GOL_RUANG', $golongan);
+			}
 		}
 
 		if ($induk !== '' || $kodeJabatan !== '' || $jabatan !== '') {
@@ -97,10 +106,22 @@ class EmployeeController extends Controller
 							continue;
 						}
 					}
-					// Filter by golongan
+					// Filter by golongan (with mapping: non-standard -> PPPK)
 					if ($golongan !== '') {
-						if ($e->GOL_RUANG !== $golongan) {
-							continue;
+						if ($golongan === 'PPPK') {
+							// Untuk PPPK: semua yang bukan standar PNS
+							if ($this->isStandardPNSGolongan($e->GOL_RUANG)) {
+								continue;
+							}
+							// Skip jika GOL_RUANG null atau kosong
+							if (empty(trim($e->GOL_RUANG ?? ''))) {
+								continue;
+							}
+						} else {
+							// Untuk golongan standar PNS
+							if ($e->GOL_RUANG !== $golongan) {
+								continue;
+							}
 						}
 					}
 					// Filter by status
@@ -121,6 +142,8 @@ class EmployeeController extends Controller
 			$kanwilName = 'Kantor Wilayah Kementerian Agama Provinsi Nusa Tenggara Barat';
 			$filtered->transform(function ($e) {
 				$e->induk_unit = $this->computeIndukUnit($e->SATUAN_KERJA, $e->kab_kota, $e->KET_JABATAN ?? null);
+				// Normalize golongan untuk display: non-standar -> PPPK
+				$e->GOL_RUANG = $this->normalizeGolongan($e->GOL_RUANG);
 				return $e;
 			})->sortBy(function ($e) use ($kanwilName) {
 				// Sort: Kanwil first, then alphabetically by induk_unit, then by NAMA_LENGKAP
@@ -157,9 +180,11 @@ class EmployeeController extends Controller
 		$all = $all->merge($chunk);
 	});
 	
-	// Compute induk_unit for all records
+	// Compute induk_unit for all records and normalize golongan
 	$all->transform(function ($e) {
 		$e->induk_unit = $this->computeIndukUnit($e->SATUAN_KERJA, $e->kab_kota, $e->KET_JABATAN ?? null);
+		// Normalize golongan untuk display: non-standar -> PPPK
+		$e->GOL_RUANG = $this->normalizeGolongan($e->GOL_RUANG);
 		return $e;
 	});
 	
@@ -196,6 +221,8 @@ class EmployeeController extends Controller
 	{
 		$this->authorize('view', $employee);
         $employee->induk_unit = $this->computeIndukUnit($employee->SATUAN_KERJA, $employee->kab_kota, $employee->KET_JABATAN ?? null);
+		// Normalize golongan untuk display: non-standar -> PPPK
+		$employee->GOL_RUANG = $this->normalizeGolongan($employee->GOL_RUANG);
 		return response()->json(['success' => true, 'data' => $employee]);
 	}
 
@@ -439,6 +466,8 @@ class EmployeeController extends Controller
 
 				// Add computed field
 				$e->induk_unit = $computedInduk;
+				// Normalize golongan untuk display: non-standar -> PPPK
+				$e->GOL_RUANG = $this->normalizeGolongan($e->GOL_RUANG);
 
 				// Calculate statistics in same pass (avoid N+1)
 				$stats['total']++;
@@ -484,6 +513,37 @@ class EmployeeController extends Controller
 				],
 			],
 		]);
+	}
+
+	/**
+	 * Normalize golongan: standar PNS tetap, non-standar jadi PPPK
+	 */
+	private function normalizeGolongan(?string $golongan): string
+	{
+		if ($golongan === null || trim($golongan) === '') {
+			return '';
+		}
+		$gol = trim($golongan);
+		// Golongan standar PNS
+		$standarPNS = ['I/a', 'I/b', 'I/c', 'I/d', 'II/a', 'II/b', 'II/c', 'II/d', 'III/a', 'III/b', 'III/c', 'III/d', 'IV/a', 'IV/b', 'IV/c', 'IV/d'];
+		if (in_array($gol, $standarPNS, true)) {
+			return $gol;
+		}
+		// Semua golongan non-standar di-mapping ke PPPK
+		return 'PPPK';
+	}
+
+	/**
+	 * Check if golongan is standard PNS
+	 */
+	private function isStandardPNSGolongan(?string $golongan): bool
+	{
+		if ($golongan === null || trim($golongan) === '') {
+			return false;
+		}
+		$gol = trim($golongan);
+		$standarPNS = ['I/a', 'I/b', 'I/c', 'I/d', 'II/a', 'II/b', 'II/c', 'II/d', 'III/a', 'III/b', 'III/c', 'III/d', 'IV/a', 'IV/b', 'IV/c', 'IV/d'];
+		return in_array($gol, $standarPNS, true);
 	}
 
 	/**
